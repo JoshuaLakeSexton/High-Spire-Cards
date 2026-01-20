@@ -1,54 +1,105 @@
-<!doctype html>\
-<html lang="en">\
-  <head>\
-    <meta charset="utf-8" />\
-    <meta name="viewport" content="width=device-width, initial-scale=1" />\
-    <title>High Spire Cards</title>\
-    <meta name="description" content="Logic. Reasoning. Rhetoric. Wisdom. Challenge. Desktop-only." />\
-\
-    <style>\
-      /* =========================\
-         LOCAL FONT (Sorts Mill Goudy)\
-         ========================= */\
-      @font-face \{\
-        font-family: "Sorts Mill Goudy";\
-        src: url("/assets/SortsMillGoudy-Regular.ttf") format("truetype");\
-        font-weight: 400;\
-        font-style: normal;\
-        font-display: swap;\
-      \}\
-      @font-face \{\
-        font-family: "Sorts Mill Goudy";\
-        src: url("/assets/SortsMillGoudy-Italic.ttf") format("truetype");\
-        font-weight: 400;\
-        font-style: italic;\
-        font-display: swap;\
-      \}\
-\
-      :root \{\
-        --ink: #0b0f14;\
-        --ink2: rgba(11, 15, 20, 0.72);\
-        --line: rgba(11, 15, 20, 0.14);\
-\
-        --glass: rgba(255, 255, 255, 0.70);\
-        --glass2: rgba(255, 255, 255, 0.50);\
-\
-        --btn: rgba(255, 255, 255, 0.80);\
-        --btnHover: rgba(255, 255, 255, 0.94);\
-      \}\
-\
-      * \{ box-sizing: border-box; \}\
-      html, body \{ height: 100%; \}\
-\
-      body \{\
-        margin: 0;\
-        font-family: "Sorts Mill Goudy", Georgia, "Times New Roman", serif;\
-        color: var(--ink);\
-        background: #fff;\
-      \}\
-\
-      /* =========================\
-         BACKGROUND IMAGE + WHITE GRADIENT WASH\
-         ========================= */\
-      .bg \{\
-        min-height: 100vh;\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>High Spire Cards</title>
+
+  <!-- Font -->
+  <link rel="preload" href="/SortsMillGoudy-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/SortsMillGoudy-Italic.ttf" as="font" type="font/ttf" crossorigin>
+
+  <style>
+    @font-face {
+      font-family: "Sorts Mill Goudy";
+      src: url("/SortsMillGoudy-Regular.ttf") format("truetype");
+      font-weight: normal;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "Sorts Mill Goudy";
+      src: url("/SortsMillGoudy-Italic.ttf") format("truetype");
+      font-weight: normal;
+      font-style: italic;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: "Sorts Mill Goudy", serif;
+    }
+
+    body {
+      background:
+        linear-gradient(to bottom, white 0%, rgba(255,255,255,0.9) 30%, rgba(255,255,255,0.6) 55%, rgba(255,255,255,0.2) 75%, rgba(255,255,255,0) 100%),
+        url("/bg.png") center / cover no-repeat fixed;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      background: rgba(255,255,255,0.85);
+      position: fixed;
+      top: 0;
+      width: 100%;
+      box-sizing: border-box;
+      z-index: 10;
+    }
+
+    header img {
+      height: 40px;
+    }
+
+    nav a {
+      margin-left: 24px;
+      text-decoration: none;
+      color: black;
+      font-size: 16px;
+    }
+
+    main {
+      padding-top: 140px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    p {
+      font-size: 20px;
+      max-width: 640px;
+      margin: 0 auto 32px;
+    }
+
+    .cta {
+      font-size: 18px;
+      padding: 14px 28px;
+      border: 1px solid black;
+      background: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <img src="/logo.png" alt="High Spire Cards" />
+    <nav>
+      <a href="#download">Download</a>
+      <a href="#subscribe">Subscribe</a>
+      <a href="/privacy.html">Privacy</a>
+    </nav>
+  </header>
+
+  <main>
+    <h1>High Spire Cards</h1>
+    <p>
+      A disciplined practice of logic, wisdom, and challenge —
+      designed for men who want to think clearly and live deliberately.
+    </p>
+    <button class="cta">Subscribe for $
