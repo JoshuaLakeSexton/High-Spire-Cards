@@ -1,0 +1,13 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/success"
+  to = "/thanks.html"
+  status = 200
+
+[[redirects]]
+  from = "/cancel"
+  to = "/"
+  status = 302
