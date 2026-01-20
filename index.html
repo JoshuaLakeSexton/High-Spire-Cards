@@ -1,105 +1,288 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>High Spire Cards</title>
 
-  <!-- Font -->
-  <link rel="preload" href="/SortsMillGoudy-Regular.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="preload" href="/SortsMillGoudy-Italic.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/assets/SortsMillGoudy-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/assets/SortsMillGoudy-Italic.ttf" as="font" type="font/ttf" crossorigin>
 
   <style>
     @font-face {
       font-family: "Sorts Mill Goudy";
-      src: url("/SortsMillGoudy-Regular.ttf") format("truetype");
-      font-weight: normal;
+      src: url("/assets/SortsMillGoudy-Regular.ttf") format("truetype");
+      font-weight: 400;
       font-style: normal;
+      font-display: swap;
     }
     @font-face {
       font-family: "Sorts Mill Goudy";
-      src: url("/SortsMillGoudy-Italic.ttf") format("truetype");
-      font-weight: normal;
+      src: url("/assets/SortsMillGoudy-Italic.ttf") format("truetype");
+      font-weight: 400;
       font-style: italic;
+      font-display: swap;
     }
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      font-family: "Sorts Mill Goudy", serif;
+    :root{
+      --text:#0a0a0a;
+      --glass: rgba(255,255,255,0.72);
+      --glass2: rgba(255,255,255,0.52);
+      --border: rgba(0,0,0,0.14);
+      --shadow: 0 22px 70px rgba(0,0,0,0.14);
+      --radius: 18px;
+      --padX: 40px;
     }
 
-    body {
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family:"Sorts Mill Goudy", serif;
+      color: var(--text);
+
       background:
-        linear-gradient(to bottom, white 0%, rgba(255,255,255,0.9) 30%, rgba(255,255,255,0.6) 55%, rgba(255,255,255,0.2) 75%, rgba(255,255,255,0) 100%),
-        url("/bg.png") center / cover no-repeat fixed;
+        linear-gradient(to bottom,
+          rgba(255,255,255,1) 0%,
+          rgba(255,255,255,1) 18%,
+          rgba(255,255,255,0.92) 34%,
+          rgba(255,255,255,0.65) 54%,
+          rgba(255,255,255,0.30) 72%,
+          rgba(255,255,255,0.08) 86%,
+          rgba(255,255,255,0.0) 100%
+        ),
+        url("/assets/bg.png") center / cover no-repeat fixed;
     }
 
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 32px;
-      background: rgba(255,255,255,0.85);
+    header{
       position: fixed;
-      top: 0;
-      width: 100%;
-      box-sizing: border-box;
-      z-index: 10;
+      top:0; left:0; right:0;
+      z-index: 30;
+      padding: 16px var(--padX);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background: rgba(255,255,255,0.82);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
     }
 
-    header img {
-      height: 40px;
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      text-decoration:none;
+      color:inherit;
+      min-width: 240px;
     }
-
-    nav a {
-      margin-left: 24px;
-      text-decoration: none;
-      color: black;
-      font-size: 16px;
+    .brand img{
+      height: 34px;
+      width: auto;
+      display:block;
     }
-
-    main {
-      padding-top: 140px;
-      text-align: center;
-    }
-
-    h1 {
-      font-size: 48px;
-      margin-bottom: 16px;
-    }
-
-    p {
-      font-size: 20px;
-      max-width: 640px;
-      margin: 0 auto 32px;
-    }
-
-    .cta {
+    .brand span{
       font-size: 18px;
-      padding: 14px 28px;
-      border: 1px solid black;
-      background: white;
-      cursor: pointer;
+      letter-spacing: 0.01em;
+      opacity: 0.9;
+    }
+
+    nav{
+      display:flex;
+      align-items:center;
+      gap: 18px;
+    }
+    nav a{
+      text-decoration:none;
+      color:inherit;
+      font-size: 16px;
+      opacity: 0.82;
+      padding: 10px 10px;
+      border-radius: 10px;
+      transition: background .18s ease, opacity .18s ease;
+    }
+    nav a:hover{
+      background: rgba(255,255,255,0.55);
+      opacity: 1;
+    }
+    .pill{
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    main{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 132px var(--padX) 90px;
+    }
+
+    .hero{
+      display:flex;
+      justify-content:center;
+      text-align:center;
+      margin-top: 18px;
+    }
+
+    .panel{
+      width: min(760px, 100%);
+      padding: 40px 38px;
+      background: var(--glass2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    h1{
+      margin:0 0 14px;
+      font-size: 66px;
+      letter-spacing: 0.01em;
+      line-height: 1.0;
+    }
+    .subtitle{
+      margin: 0 auto 24px;
+      font-size: 22px;
+      line-height: 1.5;
+      max-width: 54ch;
+      opacity: 0.9;
+    }
+
+    .ctaRow{
+      display:flex;
+      justify-content:center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .btn{
+      font-family: inherit;
+      font-size: 18px;
+      padding: 12px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.94);
+      cursor:pointer;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.10);
+      transition: transform .08s ease, background .18s ease;
+      text-decoration:none;
+      color: inherit;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width: 190px;
+    }
+    .btn:hover{ transform: translateY(-1px); }
+    .btn.secondary{
+      background: rgba(255,255,255,0.58);
+      box-shadow: none;
+    }
+
+    .fine{
+      margin-top: 14px;
+      font-size: 14px;
+      opacity: 0.72;
+      line-height: 1.55;
+    }
+
+    .downloads{
+      margin-top: 16px;
+      display:flex;
+      justify-content:center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    footer{
+      margin-top: 26px;
+      text-align:center;
+      font-size: 14px;
+      opacity: 0.72;
+    }
+
+    @media (max-width: 720px){
+      :root{ --padX: 18px; }
+      h1{ font-size: 46px; }
+      header{ padding: 14px var(--padX); }
+      .brand span{ display:none; }
+      .brand{ min-width: auto; }
+      .panel{ padding: 30px 22px; }
     }
   </style>
 </head>
 
 <body>
   <header>
-    <img src="/logo.png" alt="High Spire Cards" />
+    <a class="brand" href="/">
+      <img src="/assets/logo.png" alt="High Spire Cards">
+      <span>High Spire Cards</span>
+    </a>
     <nav>
       <a href="#download">Download</a>
       <a href="#subscribe">Subscribe</a>
       <a href="/privacy.html">Privacy</a>
+      <a class="pill" href="#subscribe">Join</a>
     </nav>
   </header>
 
   <main>
-    <h1>High Spire Cards</h1>
-    <p>
-      A disciplined practice of logic, wisdom, and challenge —
-      designed for men who want to think clearly and live deliberately.
-    </p>
-    <button class="cta">Subscribe for $
+    <section class="hero">
+      <div class="panel">
+        <h1>High Spire Cards</h1>
+        <p class="subtitle">
+          A disciplined practice of logic, wisdom, and challenge — built for clear thinking and deliberate living.
+        </p>
+
+        <div class="ctaRow" id="subscribe">
+          <button class="btn" id="subscribeBtn">Subscribe — $3 / month</button>
+          <a class="btn secondary" href="mailto:hello@highspirecards.com">Contact</a>
+        </div>
+
+        <div class="downloads" id="download">
+          <a class="btn secondary" id="downloadMac" href="#" rel="noopener">Mac (.dmg)</a>
+          <a class="btn secondary" id="downloadWin" href="#" rel="noopener">Windows (.exe)</a>
+        </div>
+
+        <div class="fine">
+          Secure Stripe checkout. After purchase you’ll be redirected to a confirmation page.
+          (Downloads can be direct links or gated later.)
+        </div>
+      </div>
+    </section>
+
+    <footer>© <span id="year"></span> High Spire Cards</footer>
+  </main>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    // TODO: Replace these with your GitHub Release URLs once you publish a release.
+    const DOWNLOAD_MAC_URL = "https://github.com/JoshuaLakeSexton/High-Spire-Cards/releases/latest";
+    const DOWNLOAD_WIN_URL = "https://github.com/JoshuaLakeSexton/High-Spire-Cards/releases/latest";
+
+    document.getElementById("downloadMac").href = DOWNLOAD_MAC_URL;
+    document.getElementById("downloadWin").href = DOWNLOAD_WIN_URL;
+
+    async function startCheckout() {
+      try {
+        const res = await fetch("/.netlify/functions/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) {
+          alert("Stripe checkout isn't set up yet. Next step: Netlify env vars + Stripe price ID.");
+          return;
+        }
+        window.location.href = data.url;
+      } catch (e) {
+        alert("Checkout error: " + e.message);
+      }
+    }
+
+    document.getElementById("subscribeBtn").addEventListener("click", startCheckout);
+  </script>
+</body>
+</html>
