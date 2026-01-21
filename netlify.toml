@@ -11,3 +11,7 @@
   from = "/cancel"
   to = "/"
   status = 302
+  
+  [build]
+  publish = "public"
+  functions = "netlify/functions"
