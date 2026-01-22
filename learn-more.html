@@ -1,1 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learn More — High Spire</title>
 
+  <link rel="preload" href="/assets/SortsMillGoudy-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/assets/SortsMillGoudy-Italic.ttf" as="font" type="font/ttf" crossorigin>
+
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <style>
+    @font-face {
+      font-family: "Sorts Mill Goudy";
+      src: url("/assets/SortsMillGoudy-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Sorts Mill Goudy";
+      src: url("/assets/SortsMillGoudy-Italic.ttf") format("truetype");
+      font-weight: 400;
+      font-style: italic;
+      font-display: swap;
+    }
+
+    :root{
+      --text:#0a0a0a;
+      --glass2: rgba(255,255,255,0.52);
+      --border: rgba(0,0,0,0.14);
+      --shadow: 0 22px 70px rgba(0,0,0,0.14);
+      --radius: 18px;
+      --padX: 40px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; overflow:hidden; }
+    body{
+      margin:0;
+      font-family:"Sorts Mill Goudy", serif;
+      color: var(--text);
+      background:
+        linear-gradient(to bottom,
+          rgba(255,255,255,1) 0%,
+          rgba(255,255,255,1) 18%,
+          rgba(255,255,255,0.92) 34%,
+          rgba(255,255,255,0.65) 54%,
+          rgba(255,255,255,0.30) 72%,
+          rgba(255,255,255,0.08) 86%,
+          rgba(255,255,255,0.0) 100%
+        ),
+        url("/assets/bg.png") center / cover no-repeat fixed;
+      overscroll-behavior: none;
+    }
+
+    header{
+      position: fixed;
+      top:0; left:0; right:0;
+      z-index: 30;
+      padding: 16px var(--padX);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background: rgba(255,255,255,0.82);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      text-decoration:none;
+      color:inherit;
+      min-width: 240px;
+    }
+    .brand img{ height: 34px; width: auto; display:block; }
+    .brand span{ font-size: 18px; letter-spacing: 0.01em; opacity: 0.9; }
+
+    nav{
+      display:flex;
+      align-items:center;
+      gap: 18px;
+    }
+    nav a{
+      text-decoration:none;
+      color:inherit;
+      font-size: 16px;
+      opacity: 0.82;
+      padding: 10px 10px;
+      border-radius: 10px;
+      transition: background .18s ease, opacity .18s ease;
+    }
+    nav a:hover{
+      background: rgba(255,255,255,0.55);
+      opacity: 1;
+    }
+    .pill{
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    main{
+      min-height: 100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 0 var(--padX);
+    }
+
+    .bento{
+      width: min(920px, 100%);
+      background: var(--glass2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      padding: 26px;
+    }
+
+    .bentoHeader{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    h1{
+      margin:0;
+      font-size: 42px;
+      line-height: 1.05;
+      letter-spacing: 0.01em;
+    }
+    .sub{
+      margin: 8px 0 0;
+      opacity: 0.85;
+      font-size: 18px;
+      line-height: 1.4;
+      max-width: 60ch;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .card{
+      background: rgba(255,255,255,0.74);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.07);
+    }
+
+    .cardTitle{
+      font-size: 18px;
+      margin: 0 0 8px;
+      opacity: 0.9;
+    }
+
+    /* Accordion */
+    .qa{
+      border-top: 1px solid rgba(0,0,0,0.10);
+    }
+    .qa:first-child{ border-top: 0; }
+
+    .q{
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: 0;
+      padding: 14px 2px;
+      font-family: inherit;
+      font-size: 18px;
+      cursor: pointer;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+    }
+    .q span{ opacity: 0.92; }
+    .chev{
+      width: 26px;
+      height: 26px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.12);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: rgba(255,255,255,0.7);
+      flex: 0 0 auto;
+      transition: transform .16s ease;
+    }
+
+    .a{
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .22s ease;
+      opacity: 0.9;
+    }
+    .a p{
+      margin: 0 0 14px;
+      line-height: 1.55;
+      font-size: 16px;
+      padding-right: 6px;
+    }
+
+    .qa.open .a{ max-height: 220px; }
+    .qa.open .chev{ transform: rotate(180deg); }
+
+    .links a{
+      display:block;
+      text-decoration:none;
+      color: inherit;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.72);
+      margin-top: 10px;
+      transition: transform .08s ease, background .18s ease;
+    }
+    .links a:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.86);
+    }
+    .muted{
+      font-size: 14px;
+      opacity: 0.75;
+      line-height: 1.4;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 860px){
+      :root{ --padX: 18px; }
+      .grid{ grid-template-columns: 1fr; }
+      header{ padding: 14px var(--padX); }
+      .brand span{ display:none; }
+      .brand{ min-width: auto; }
+      h1{ font-size: 34px; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <a class="brand" href="/">
+      <img src="/assets/logo.png" alt="High Spire Cards">
+      <span>High Spire</span>
+    </a>
+
+    <nav>
+      <a href="/privacy.html">Privacy</a>
+      <a class="pill" href="/">Back</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="bento" aria-label="Learn more">
+      <div class="bentoHeader">
+        <div>
+          <h1>Learn More</h1>
+          <p class="sub">
+            Quick answers and docs for High Spire. Click a question to expand.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- FAQ -->
+        <div class="card">
+          <div class="cardTitle">FAQ</div>
+
+          <div class="qa open">
+            <button class="q" type="button">
+              <span>What is High Spire?</span>
+              <div class="chev">⌄</div>
+            </button>
+            <div class="a">
+              <p>High Spire is a cognitive training and classical education platform built around logic, rhetoric, memory, and disciplined thinking.</p>
+            </div>
+          </div>
+
+          <div class="qa">
+            <button class="q" type="button">
+              <span>Who is this for?</span>
+              <div class="chev">⌄</div>
+            </button>
+            <div class="a">
+              <p>Homeschool families, students, and anyone who wants to strengthen reasoning, focus, and foundational thinking in the age of A.I.</p>
+            </div>
+          </div>
+
+          <div class="qa">
+            <button class="q" type="button">
+              <span>What do I get with the Free Trial?</span>
+              <div class="chev">⌄</div>
+            </button>
+            <div class="a">
+              <p>Immediate access to the app and the first learning sets. Cancel anytime before the trial ends.</p>
+            </div>
+          </div>
+
+          <div class="qa">
+            <button class="q" type="button">
+              <span>How do I cancel?</span>
+              <div class="chev">⌄</div>
+            </button>
+            <div class="a">
+              <p>You can cancel from the Stripe customer portal link we provide after purchase (or by emailing support and we’ll send the portal link).</p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Docs / Links -->
+        <div class="card links">
+          <div class="cardTitle">Docs</div>
+
+          <a href="/terms.html">Terms</a>
+          <a href="/privacy.html">Privacy</a>
+          <a href="mailto:converse@highspirecards.com">Support (Email)</a>
+
+          <div class="muted">
+            Want a live chat bot here next? We can add Crisp or Tawk, or an AI FAQ assistant once these answers are finalized.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Accordion behavior (single-open)
+    const items = Array.from(document.querySelectorAll(".qa"));
+    items.forEach((item) => {
+      const btn = item.querySelector(".q");
+      btn.addEventListener("click", () => {
+        items.forEach(i => { if (i !== item) i.classList.remove("open"); });
+        item.classList.toggle("open");
+      });
+    });
+  </script>
+</body>
+</html>
