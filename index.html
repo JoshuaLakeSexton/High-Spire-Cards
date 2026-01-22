@@ -7,7 +7,8 @@
 
   <link rel="preload" href="/assets/SortsMillGoudy-Regular.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="/assets/SortsMillGoudy-Italic.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+  <!-- Favicons (clean + no duplicates) -->
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -222,7 +223,7 @@
     </a>
     <nav>
       <a href="/privacy.html">Privacy</a>
-      <a class="pill" href="#subscribe">Enter</a>
+      <a class="pill" href="#freeTrial">Enter</a>
     </nav>
   </header>
 
@@ -233,11 +234,11 @@
         <p class="subtitle">
           Dedicated to the enhancement of human cognitive improvement.
           We provide frameworks, methodologies, and tools, based on the Trivium, the Socratic Method, and Classical Education Principles.
-          Great for Homeschoolers, Students, or anyone interested in improving their cognitive capabilities in the age of A.I. 
+          Great for Homeschoolers, Students, or anyone interested in improving their cognitive capabilities in the age of A.I.
         </p>
 
-        <div class="ctaRow" id="Free Trial">
-          <button class="btn" id="Free TrialBtn">Free Trial</button>
+        <div class="ctaRow" id="freeTrial">
+          <button class="btn" id="freeTrialBtn" type="button">Free Trial</button>
           <a class="btn secondary" href="mailto:converse@highspirecards.com">Contact</a>
         </div>
 
@@ -245,6 +246,10 @@
           <a class="btn secondary" id="downloadMac" href="#" rel="noopener">Mac (.dmg)</a>
           <a class="btn secondary" id="downloadWin" href="#" rel="noopener">Windows (.exe)</a>
         </div>
+
+        <p class="fine">
+          If clicking “Free Trial” doesn’t redirect, open DevTools → Console to see the exact error. (We’ll fix Stripe config next.)
+        </p>
       </div>
     </section>
 
@@ -252,15 +257,24 @@
   </main>
 
   <script>
+    // Year
     document.getElementById("year").textContent = new Date().getFullYear();
-    
+
+    // Downloads
     const DOWNLOAD_MAC_URL = "https://github.com/JoshuaLakeSexton/High-Spire-Cards/releases/latest";
     const DOWNLOAD_WIN_URL = "https://github.com/JoshuaLakeSexton/High-Spire-Cards/releases/latest";
-
     document.getElementById("downloadMac").href = DOWNLOAD_MAC_URL;
     document.getElementById("downloadWin").href = DOWNLOAD_WIN_URL;
 
+    // Stripe Checkout
     async function startCheckout() {
+      const btn = document.getElementById("freeTrialBtn");
+      if (!btn) return;
+
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = "Loading...";
+
       try {
         const res = await fetch("/.netlify/functions/create-checkout-session", {
           method: "POST",
@@ -268,18 +282,39 @@
           body: JSON.stringify({})
         });
 
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.url) {
-          alert("Stripe checkout isn't set up yet. Next step: Netlify env vars + Stripe price ID.");
+        const text = await res.text();
+        let data = {};
+        try { data = JSON.parse(text); } catch { /* leave data empty */ }
+
+        // If function returns a checkout URL, redirect.
+        if (res.ok && data.url) {
+          window.location.href = data.url;
           return;
         }
-        window.location.href = data.url;
+
+        // Otherwise surface the real error (prevents “nothing happens”).
+        const msg = data.error || data.message || text || `Checkout failed (${res.status})`;
+        console.error("Checkout error:", { status: res.status, msg, raw: text });
+        alert(msg);
+
       } catch (e) {
-        alert("Checkout error: " + e.message);
+        console.error(e);
+        alert("Checkout error: " + (e?.message || e));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
       }
     }
 
-    document.getElementById("subscribeBtn").addEventListener("click", startCheckout);
+    // Wire click safely
+    document.addEventListener("DOMContentLoaded", () => {
+      const btn = document.getElementById("freeTrialBtn");
+      if (!btn) {
+        console.error("freeTrialBtn not found");
+        return;
+      }
+      btn.addEventListener("click", startCheckout);
+    });
   </script>
 </body>
 </html>
