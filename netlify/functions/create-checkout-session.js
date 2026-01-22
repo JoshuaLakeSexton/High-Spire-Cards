@@ -22,6 +22,21 @@ export async function handler(event) {
       success_url: "https://highspirecards.com/thanks.html",
       cancel_url: "https://highspirecards.com/",
     });
+const session = await stripe.checkout.sessions.create({
+  mode: "subscription",
+  line_items: [{ price, quantity: 1 }],
+
+  // 3-day free trial
+  subscription_data: {
+    trial_period_days: 3,
+  },
+
+  // Collect payment method up front so Stripe can charge automatically when trial ends
+  payment_method_collection: "always",
+
+  success_url: "https://highspirecards.com/thanks.html",
+  cancel_url: "https://highspirecards.com/",
+});
 
     return {
       statusCode: 200,
