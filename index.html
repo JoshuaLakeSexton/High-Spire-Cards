@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>High Spire</title>
 
+  <!-- Fonts -->
   <link rel="preload" href="/assets/SortsMillGoudy-Regular.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="/assets/SortsMillGoudy-Italic.ttf" as="font" type="font/ttf" crossorigin>
 
-  <!-- Favicons (clean + no duplicates) -->
+  <!-- Favicons -->
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -40,11 +41,16 @@
     }
 
     *{ box-sizing:border-box; }
-    html,body{ height:100%; }
+    html,body{
+      height:100%;
+      overflow:hidden; /* no scroll */
+    }
+
     body{
       margin:0;
       font-family:"Sorts Mill Goudy", serif;
       color: var(--text);
+      overscroll-behavior: none;
 
       background:
         linear-gradient(to bottom,
@@ -69,6 +75,7 @@
       justify-content:space-between;
       background: rgba(255,255,255,0.82);
       backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
 
     .brand{
@@ -93,48 +100,71 @@
     nav{
       display:flex;
       align-items:center;
-      gap: 18px;
+      gap: 12px;
     }
-    nav a{
+
+    /* Shared pill style for both <a> and <button> */
+    .pill{
+      appearance: none;
+      -webkit-appearance: none;
+      font-family: inherit;
+      font-size: 16px;
+      line-height: 1;
+      color: inherit;
+      text-decoration: none;
+
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      cursor: pointer;
+      opacity: 0.9;
+
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap: 8px;
+      transition: transform .08s ease, background .18s ease, opacity .18s ease;
+    }
+    .pill:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.98);
+      opacity: 1;
+    }
+
+    .link{
+      padding: 10px 10px;
+      border-radius: 10px;
       text-decoration:none;
       color:inherit;
       font-size: 16px;
       opacity: 0.82;
-      padding: 10px 10px;
-      border-radius: 10px;
       transition: background .18s ease, opacity .18s ease;
     }
-    nav a:hover{
+    .link:hover{
       background: rgba(255,255,255,0.55);
       opacity: 1;
     }
-    .pill{
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.92);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-    }
 
     main{
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 132px var(--padX) 90px;
-    }
-
-    .hero{
+      min-height: 100vh;
       display:flex;
+      align-items:center;
       justify-content:center;
-      text-align:center;
-      margin-top: 18px;
+      padding: 0 var(--padX);
     }
 
     .panel{
-      width: min(760px, 100%);
-      padding: 40px 38px;
+      width: min(780px, 100%);
+      padding: 44px 42px 36px;
       background: var(--glass2);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      text-align:center;
     }
 
     h1{
@@ -143,11 +173,12 @@
       letter-spacing: 0.01em;
       line-height: 1.0;
     }
+
     .subtitle{
       margin: 0 auto 24px;
       font-size: 22px;
       line-height: 1.5;
-      max-width: 54ch;
+      max-width: 58ch;
       opacity: 0.9;
     }
 
@@ -156,7 +187,7 @@
       justify-content:center;
       gap: 12px;
       flex-wrap: wrap;
-      margin-top: 10px;
+      margin-top: 12px;
     }
 
     .btn{
@@ -177,118 +208,82 @@
       min-width: 190px;
     }
     .btn:hover{ transform: translateY(-1px); }
+
     .btn.secondary{
-      background: rgba(255,255,255,0.58);
+      background: rgba(255,255,255,0.62);
       box-shadow: none;
     }
 
-    .fine{
-      margin-top: 14px;
-      font-size: 14px;
-      opacity: 0.72;
-      line-height: 1.55;
-    }
-
-    .downloads{
-      margin-top: 16px;
-      display:flex;
-      justify-content:center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-      html, body{
-      height: 100%;
-      overflow: hidden;
-    }
-
     footer{
-      margin-top: 26px;
+      position: fixed;
+      bottom: 14px;
+      left: 0;
+      right: 0;
       text-align:center;
       font-size: 14px;
-      opacity: 0.72;
+      opacity: 0.65;
+      pointer-events: none;
     }
 
     @media (max-width: 720px){
       :root{ --padX: 18px; }
-      h1{ font-size: 46px; }
       header{ padding: 14px var(--padX); }
       .brand span{ display:none; }
       .brand{ min-width: auto; }
-      .panel{ padding: 30px 22px; }
+      h1{ font-size: 46px; }
+      .panel{ padding: 32px 22px 26px; }
+      .subtitle{ font-size: 18px; }
     }
-    .musicBtn{
-  font-family: inherit;
-  font-size: 16px;
-  opacity: 0.82;
-  padding: 10px 10px;
-  border-radius: 10px;
-  cursor: pointer;
-  color: inherit;
-}
-.musicBtn:hover{
-  background: rgba(255,255,255,0.55);
-  opacity: 1;
-}
   </style>
 </head>
 
 <body>
   <header>
-    <a class="brand" href="/">
-      <img src="/assets/logo.png" alt="High Spire Cards">
+    <a class="brand" href="/" aria-label="High Spire Home">
+      <img src="/assets/logo.png" alt="High Spire">
       <span>High Spire</span>
     </a>
+
     <nav>
-      <a href="/privacy.html">Privacy</a>
-      <a class="pill" href="#freeTrial">Enter</a>
+      <a class="link" href="/privacy.html">Privacy</a>
+
+      <button class="pill" id="musicToggle" type="button" aria-pressed="false" title="Play music">
+        Play
+      </button>
+
+      <a class="pill" href="#enter" id="enterBtn">Enter</a>
     </nav>
   </header>
 
   <main>
-    <section class="hero">
-      <div class="panel">
-        <h1>Spire Learning</h1>
-        <p class="subtitle">
-          Most people consume information. Few train their minds.
-          High Spire is built for those who want mastery, discipline, and intellectual strength, not brainrot.
-          Begin with a free trial today.
-        </p>
+    <section class="panel" aria-label="High Spire introduction">
+      <h1>Spire Learning</h1>
 
-        <nav>
-        <a href="/privacy.html">Privacy</a>
-        <button class="pill musicBtn" id="musicToggle" type="button" aria-pressed="false" title="Play music">
-         Play
-        </button>
-        <a class="pill" href="#freeTrial">Enter</a>
-        </nav>
+      <p class="subtitle">
+        Most people consume information. Few train their minds.
+        High Spire is for those who want clarity, discipline, and intellectual strength.
+      </p>
 
-        <div class="downloads" id="download">
-          <a class="btn secondary" id="downloadMac" href="#" rel="noopener">Mac (.dmg)</a>
-          <a class="btn secondary" id="downloadWin" href="#" rel="noopener">Windows (.exe)</a>
-        </div>
+      <div class="ctaRow">
+        <button class="btn" id="freeTrialBtn" type="button">Free Trial</button>
+        <a class="btn secondary" href="/learn-more.html">Learn More</a>
       </div>
     </section>
-
-    <footer>© <span id="year"></span> High Spire Cards</footer>
   </main>
 
-  <script>
-    // Year
-    document.getElementById("year").textContent = new Date().getFullYear();
+  <footer>© <span id="year"></span> High Spire Cards</footer>
 
-    // Downloads
-    const DOWNLOAD_MAC_URL = "https://github.com/JoshuaLakeSexton/High-Spire-Cards/releases/latest";
-    const DOWNLOAD_WIN_URL = "https://github.com/JoshuaLakeSexton/High-Spire-Cards/releases/latest";
-    document.getElementById("downloadMac").href = DOWNLOAD_MAC_URL;
-    document.getElementById("downloadWin").href = DOWNLOAD_WIN_URL;
+  <!-- Audio -->
+  <audio id="siteAudio" preload="none" src="/assets/hs-music.mp3"></audio>
+
+  <script>
+    // Footer year
+    document.getElementById("year").textContent = new Date().getFullYear();
 
     // Stripe Checkout
     async function startCheckout() {
       const btn = document.getElementById("freeTrialBtn");
-      if (!btn) return;
-
       btn.disabled = true;
-      const originalText = btn.textContent;
       btn.textContent = "Loading...";
 
       try {
@@ -298,71 +293,55 @@
           body: JSON.stringify({})
         });
 
-        const text = await res.text();
-        let data = {};
-        try { data = JSON.parse(text); } catch { /* leave data empty */ }
+        const data = await res.json().catch(() => ({}));
 
-        // If function returns a checkout URL, redirect.
-        if (res.ok && data.url) {
-          window.location.href = data.url;
+        if (!res.ok || !data.url) {
+          alert(data?.error || "Checkout isn't set up yet. Check Netlify env vars.");
           return;
         }
 
-        // Otherwise surface the real error (prevents “nothing happens”).
-        const msg = data.error || data.message || text || `Checkout failed (${res.status})`;
-        console.error("Checkout error:", { status: res.status, msg, raw: text });
-        alert(msg);
-
+        window.location.href = data.url;
       } catch (e) {
-        console.error(e);
-        alert("Checkout error: " + (e?.message || e));
+        alert("Checkout error: " + (e?.message || "Unknown error"));
       } finally {
         btn.disabled = false;
-        btn.textContent = originalText;
+        btn.textContent = "Free Trial";
       }
     }
 
-    // Wire click safely
-    document.addEventListener("DOMContentLoaded", () => {
-      const btn = document.getElementById("freeTrialBtn");
-      if (!btn) {
-        console.error("freeTrialBtn not found");
-        return;
-      }
-      btn.addEventListener("click", startCheckout);
-    });<script>
-  // ...your existing JS...
+    document.getElementById("freeTrialBtn").addEventListener("click", startCheckout);
 
-  // Music toggle
-  const audio = document.getElementById("siteAudio");
-  const toggle = document.getElementById("musicToggle");
+    // Music toggle
+    const audio = document.getElementById("siteAudio");
+    const toggle = document.getElementById("musicToggle");
 
-  function setButtonState(isPlaying){
-    toggle.textContent = isPlaying ? "Pause" : "Play";
-    toggle.setAttribute("aria-pressed", String(isPlaying));
-    toggle.title = isPlaying ? "Pause music" : "Play music";
-  }
-
-  setButtonState(false);
-
-  toggle.addEventListener("click", async () => {
-    try {
-      if (audio.paused) {
-        await audio.play();
-        setButtonState(true);
-      } else {
-        audio.pause();
-        setButtonState(false);
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Audio couldn’t play. Try clicking again (browser autoplay rules).");
+    function setMusicState(isPlaying){
+      toggle.textContent = isPlaying ? "Pause" : "Play";
+      toggle.setAttribute("aria-pressed", String(isPlaying));
+      toggle.title = isPlaying ? "Pause music" : "Play music";
     }
-  });
 
-  audio.addEventListener("ended", () => setButtonState(false));
-</script>
+    setMusicState(false);
+
+    toggle.addEventListener("click", async () => {
+      try {
+        if (audio.paused) {
+          await audio.play();
+          setMusicState(true);
+        } else {
+          audio.pause();
+          setMusicState(false);
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Audio couldn’t play. Click Play again (browser autoplay rules).");
+      }
+    });
+
+    audio.addEventListener("ended", () => setMusicState(false));
   </script>
-  <audio id="siteAudio" preload="none" src="/assets/hs-music.mp3"></audio>
+
+  <!-- anchor target for Enter (kept simple) -->
+  <div id="enter" style="position:absolute; top:0; left:0; width:1px; height:1px; overflow:hidden;"></div>
 </body>
 </html>
