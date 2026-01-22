@@ -8,9 +8,11 @@ export async function handler(event) {
     }
 
     const price = process.env.STRIPE_PRICE_ID;
-    if (!price) return { statusCode: 500, body: "Missing STRIPE_PRICE_ID" };
+    if (!price) {
+      return { statusCode: 500, body: JSON.stringify({ error: "Missing STRIPE_PRICE_ID" }) };
+    }
 
-    // Create an “existing customer” every time (simple fix)
+    // Create an “existing customer” (works around your Accounts v2 restriction)
     const customer = await stripe.customers.create();
 
     const session = await stripe.checkout.sessions.create({
