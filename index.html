@@ -330,7 +330,39 @@
         return;
       }
       btn.addEventListener("click", startCheckout);
-    });
+    });<script>
+  // ...your existing JS...
+
+  // Music toggle
+  const audio = document.getElementById("siteAudio");
+  const toggle = document.getElementById("musicToggle");
+
+  function setButtonState(isPlaying){
+    toggle.textContent = isPlaying ? "Pause" : "Play";
+    toggle.setAttribute("aria-pressed", String(isPlaying));
+    toggle.title = isPlaying ? "Pause music" : "Play music";
+  }
+
+  setButtonState(false);
+
+  toggle.addEventListener("click", async () => {
+    try {
+      if (audio.paused) {
+        await audio.play();
+        setButtonState(true);
+      } else {
+        audio.pause();
+        setButtonState(false);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Audio couldn’t play. Try clicking again (browser autoplay rules).");
+    }
+  });
+
+  audio.addEventListener("ended", () => setButtonState(false));
+</script>
   </script>
+  <audio id="siteAudio" preload="none" src="/assets/hs-music.mp3"></audio>
 </body>
 </html>
