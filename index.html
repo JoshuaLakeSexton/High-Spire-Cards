@@ -326,8 +326,66 @@
   <footer>© <span id="year"></span> High Spire Cards</footer>
 
   <!-- Audio -->
-  <audio id="siteAudio" preload="none" src="/assets/hs-music.mp3"></audio>
+  <audio id="siteAudio" preload="auto" loop>
+  <source src="/assets/hs-music.mp3" type="audio/mpeg">
+</audio>
+  <script>
+  (function () {
+    const audio = document.getElementById("siteAudio");
 
+    // Support either header button id="musicToggle" or CTA id="musicToggleCta"
+    const headerBtn = document.getElementById("musicToggle");
+    const ctaBtn = document.getElementById("musicToggleCta");
+
+    if (!audio) {
+      console.warn("No #siteAudio element found.");
+      return;
+    }
+
+    function setLabel(isPlaying) {
+      if (headerBtn) {
+        headerBtn.textContent = isPlaying ? "Pause" : "Play";
+        headerBtn.setAttribute("aria-pressed", String(isPlaying));
+      }
+      if (ctaBtn) {
+        ctaBtn.textContent = isPlaying ? "Pause Music" : "Play Music";
+      }
+    }
+
+    async function toggle() {
+      try {
+        if (audio.paused) {
+          await audio.play();
+          setLabel(true);
+        } else {
+          audio.pause();
+          setLabel(false);
+        }
+      } catch (err) {
+        console.error("Audio play failed:", err);
+        alert("Audio couldn’t play. Try clicking again.");
+      }
+    }
+
+    // Attach listeners safely (won't throw if button missing)
+    if (headerBtn) headerBtn.addEventListener("click", toggle);
+    if (ctaBtn) ctaBtn.addEventListener("click", toggle);
+
+    // Helps Safari/iOS: "unlock" audio on first gesture
+    function unlockOnce() {
+      audio.play().then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      }).catch(() => {});
+      window.removeEventListener("click", unlockOnce);
+      window.removeEventListener("touchstart", unlockOnce);
+    }
+    window.addEventListener("click", unlockOnce, { once: true });
+    window.addEventListener("touchstart", unlockOnce, { once: true });
+
+    setLabel(false);
+  })();
+</script>
   <script>
     // Footer year
     document.getElementById("year").textContent = new Date().getFullYear();
