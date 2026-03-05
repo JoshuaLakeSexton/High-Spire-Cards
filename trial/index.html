@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Start Your Free Trial — High Spire</title>
+  <meta
+    name="description"
+    content="Sign in and continue to Stripe Checkout to start your High Spire free trial."
+  />
+
+  <link rel="preload" href="/assets/SortsMillGoudy-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/assets/SortsMillGoudy-Italic.ttf" as="font" type="font/ttf" crossorigin>
+
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <style>
+    @font-face {
+      font-family: "Sorts Mill Goudy";
+      src: url("/assets/SortsMillGoudy-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Sorts Mill Goudy";
+      src: url("/assets/SortsMillGoudy-Italic.ttf") format("truetype");
+      font-weight: 400;
+      font-style: italic;
+      font-display: swap;
+    }
+
+    :root{
+      --text:#0a0a0a;
+      --glass: rgba(255,255,255,0.72);
+      --glass2: rgba(255,255,255,0.52);
+      --border: rgba(0,0,0,0.14);
+      --shadow: 0 22px 70px rgba(0,0,0,0.14);
+      --radius: 0px;
+      --padX: 40px;
+      --error: #8f1f1f;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ min-height:100%; }
+
+    body{
+      margin:0;
+      font-family:"Sorts Mill Goudy", serif;
+      color: var(--text);
+      background:
+        linear-gradient(to bottom,
+          rgba(255,255,255,1) 0%,
+          rgba(255,255,255,1) 18%,
+          rgba(255,255,255,0.92) 34%,
+          rgba(255,255,255,0.65) 54%,
+          rgba(255,255,255,0.30) 72%,
+          rgba(255,255,255,0.08) 86%,
+          rgba(255,255,255,0.0) 100%
+        ),
+        url("/assets/bg.png") center / cover no-repeat fixed;
+      overscroll-behavior: none;
+    }
+
+    header{
+      position: fixed;
+      top:0; left:0; right:0;
+      z-index: 30;
+      padding: 16px var(--padX);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background: rgba(255,255,255,0.82);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      text-decoration:none;
+      color:inherit;
+      min-width: 240px;
+    }
+    .brand img{
+      height: 34px;
+      width: auto;
+      display:block;
+    }
+    .brand span{
+      font-size: 18px;
+      letter-spacing: 0.01em;
+      opacity: 0.9;
+    }
+
+    nav{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+    }
+
+    .pill{
+      appearance: none;
+      -webkit-appearance: none;
+      font-family: inherit;
+      font-size: 16px;
+      line-height: 1;
+      color: inherit;
+      text-decoration: none;
+      padding: 10px 12px;
+      border-radius: 0;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      cursor: pointer;
+      opacity: 0.9;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      transition: transform .08s ease, background .18s ease, opacity .18s ease;
+    }
+
+    .pill:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.98);
+      opacity: 1;
+    }
+
+    .pill:focus-visible,
+    .btn:focus-visible,
+    .subLink:focus-visible {
+      outline: 2px solid rgba(0, 0, 0, 0.85);
+      outline-offset: 2px;
+    }
+
+    .link{
+      padding: 10px 10px;
+      border-radius: 0;
+      text-decoration:none;
+      color:inherit;
+      font-size: 16px;
+      opacity: 0.82;
+      transition: background .18s ease, opacity .18s ease;
+    }
+    .link:hover{
+      background: rgba(255,255,255,0.55);
+      opacity: 1;
+    }
+
+    main{
+      min-height: 100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 96px var(--padX) 40px;
+    }
+
+    .panel{
+      width: min(780px, 100%);
+      padding: 44px 42px 36px;
+      background: var(--glass2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      text-align:center;
+    }
+
+    h1{
+      margin:0 0 14px;
+      font-size: 66px;
+      letter-spacing: 0.01em;
+      line-height: 1.0;
+    }
+
+    .subtitle{
+      margin: 0 auto 10px;
+      font-size: 22px;
+      line-height: 1.5;
+      max-width: 58ch;
+      opacity: 0.9;
+    }
+
+    .signedIn{
+      min-height: 1.25em;
+      margin: 0 0 18px;
+      font-size: 16px;
+      opacity: 0.78;
+    }
+
+    .planTile{
+      margin: 0 auto 20px;
+      width: min(460px, 100%);
+      text-align: left;
+      background: rgba(255,255,255,0.74);
+      border: 1px solid var(--border);
+      border-radius: 0;
+      padding: 16px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.07);
+    }
+
+    .planName{
+      margin: 0 0 4px;
+      font-size: 30px;
+      letter-spacing: 0.01em;
+      line-height: 1.05;
+    }
+
+    .planMeta{
+      margin: 0;
+      opacity: 0.8;
+      font-size: 18px;
+      line-height: 1.4;
+    }
+
+    .status{
+      min-height: 1.4em;
+      margin: 0 0 8px;
+      font-size: 18px;
+      opacity: 0.9;
+    }
+
+    .error{
+      min-height: 1.4em;
+      margin: 0;
+      font-size: 17px;
+      color: var(--error);
+      visibility: hidden;
+    }
+
+    .error.show{
+      visibility: visible;
+    }
+
+    .ctaRow{
+      display:flex;
+      justify-content:center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .btn{
+      font-family: inherit;
+      font-size: 18px;
+      padding: 12px 18px;
+      border-radius: 0;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.94);
+      cursor:pointer;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.10);
+      transition: transform .08s ease, background .18s ease, opacity .18s ease;
+      text-decoration:none;
+      color: inherit;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width: 220px;
+    }
+
+    .btn:hover{ transform: translateY(-1px); }
+
+    .btn.secondary{
+      background: rgba(255,255,255,0.62);
+      box-shadow: none;
+    }
+
+    .btn:disabled{
+      transform: none;
+      opacity: 0.52;
+      cursor: not-allowed;
+    }
+
+    .linkRow{
+      margin-top: 18px;
+      display:flex;
+      justify-content:center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .subLink{
+      text-decoration:none;
+      color: inherit;
+      opacity: 0.82;
+      border-bottom: 1px solid rgba(0,0,0,0.22);
+      padding-bottom: 1px;
+      transition: opacity .18s ease, border-color .18s ease;
+    }
+    .subLink:hover{
+      opacity: 1;
+      border-color: rgba(0,0,0,0.42);
+    }
+
+    .debugRow{
+      margin-top: 16px;
+      border-top: 1px solid rgba(0,0,0,0.12);
+      padding-top: 14px;
+      text-align: left;
+    }
+    .debugOut{
+      margin: 10px 0 0;
+      font-size: 14px;
+      opacity: 0.72;
+      word-break: break-word;
+      min-height: 1.2em;
+    }
+
+    @media (max-width: 720px){
+      :root{ --padX: 18px; }
+      header{ padding: 14px var(--padX); }
+      .brand span{ display:none; }
+      .brand{ min-width: auto; }
+      h1{ font-size: 46px; }
+      .panel{ padding: 32px 22px 26px; }
+      .subtitle{ font-size: 18px; }
+      .planName{ font-size: 26px; }
+      .planMeta, .status{ font-size: 17px; }
+      .btn{ min-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/" aria-label="High Spire Home">
+      <img src="/assets/logo.png" alt="High Spire">
+      <span>High Spire</span>
+    </a>
+
+    <nav>
+      <a class="link" href="/pricing">Pricing</a>
+      <a class="pill" href="/">Back to home</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="panel" aria-label="Free trial checkout">
+      <h1>Start Your Free Trial</h1>
+      <p class="subtitle">Sign in, then continue to Stripe Checkout to start your trial subscription.</p>
+      <p id="signedInLine" class="signedIn" aria-live="polite"></p>
+
+      <section class="planTile" aria-label="Plan details">
+        <p class="planName">Pro Plan</p>
+        <p class="planMeta">3-day free trial, then billed monthly.</p>
+      </section>
+
+      <p id="status" class="status" aria-live="polite">Checking sign-in status...</p>
+      <p id="checkoutError" class="error" aria-live="polite">Checkout unavailable. Please try again.</p>
+
+      <div class="ctaRow">
+        <button id="checkoutBtn" class="btn" type="button" disabled>Continue to Checkout</button>
+        <button id="authBtn" class="btn secondary" type="button">Sign In / Create Account</button>
+      </div>
+
+      <div class="linkRow">
+        <a class="subLink" href="/">Back to home</a>
+        <a class="subLink" href="/pricing">Learn more</a>
+      </div>
+
+      <div id="debugRow" class="debugRow" hidden>
+        <button id="checkAccessBtn" class="btn secondary" type="button">Check access</button>
+        <p id="debugOutput" class="debugOut" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script>
+    (function () {
+      const authBtn = document.getElementById("authBtn");
+      const checkoutBtn = document.getElementById("checkoutBtn");
+      const statusEl = document.getElementById("status");
+      const signedInLine = document.getElementById("signedInLine");
+      const checkoutError = document.getElementById("checkoutError");
+      const debugRow = document.getElementById("debugRow");
+      const debugOutput = document.getElementById("debugOutput");
+      const checkAccessBtn = document.getElementById("checkAccessBtn");
+
+      const params = new URLSearchParams(window.location.search);
+      const shouldAutostart = params.get("autostart") === "1";
+      const debugMode = params.get("debug") === "1";
+
+      let checkoutInFlight = false;
+      let autostartAttempted = false;
+
+      function currentUser() {
+        return window.netlifyIdentity ? window.netlifyIdentity.currentUser() : null;
+      }
+
+      function setStatus(message) {
+        statusEl.textContent = message;
+      }
+
+      function setErrorVisible(visible) {
+        checkoutError.classList.toggle("show", Boolean(visible));
+      }
+
+      function setSignedInLine(user) {
+        if (!user || !user.email) {
+          signedInLine.textContent = "";
+          return;
+        }
+        signedInLine.textContent = "Signed in as " + user.email;
+      }
+
+      function setCheckoutBusy(isBusy) {
+        checkoutInFlight = isBusy;
+        checkoutBtn.disabled = isBusy || !currentUser();
+        authBtn.disabled = isBusy;
+        checkoutBtn.textContent = isBusy ? "Starting checkout..." : "Continue to Checkout";
+      }
+
+      function syncAuthUI() {
+        const user = currentUser();
+        setSignedInLine(user);
+
+        if (user) {
+          authBtn.textContent = "Sign Out";
+          checkoutBtn.disabled = checkoutInFlight;
+          setStatus("Signed in. Continue to Stripe Checkout when ready.");
+        } else {
+          authBtn.textContent = "Sign In / Create Account";
+          checkoutBtn.disabled = true;
+          setStatus("Please sign in to continue.");
+        }
+      }
+
+      async function getIdentityToken(user) {
+        if (!user || typeof user.jwt !== "function") {
+          return null;
+        }
+        return user.jwt(true);
+      }
+
+      async function startCheckout() {
+        if (checkoutInFlight) {
+          return;
+        }
+
+        const user = currentUser();
+        if (!user) {
+          setStatus("Please sign in before checkout.");
+          setErrorVisible(false);
+          if (window.netlifyIdentity) {
+            window.netlifyIdentity.open("signup");
+          }
+          return;
+        }
+
+        setErrorVisible(false);
+        setCheckoutBusy(true);
+        setStatus("Creating Stripe Checkout session...");
+
+        try {
+          const token = await getIdentityToken(user);
+          const response = await fetch("/.netlify/functions/create-checkout-session", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: token ? "Bearer " + token : "",
+            },
+            body: JSON.stringify({ trial: true }),
+          });
+
+          const payload = await response.json().catch(function () { return {}; });
+          if (!response.ok || !payload.url) {
+            throw new Error(payload && payload.error ? payload.error : "Checkout unavailable");
+          }
+
+          window.location.assign(payload.url);
+        } catch (err) {
+          console.error("Checkout error:", err);
+          setStatus("Unable to start checkout.");
+          setErrorVisible(true);
+          setCheckoutBusy(false);
+        }
+      }
+
+      async function checkAccessDebug() {
+        const user = currentUser();
+        if (!user) {
+          debugOutput.textContent = "Not signed in.";
+          return;
+        }
+
+        try {
+          const token = await getIdentityToken(user);
+          const response = await fetch("/.netlify/functions/me", {
+            method: "GET",
+            headers: {
+              Authorization: token ? "Bearer " + token : "",
+            },
+          });
+          const payload = await response.json().catch(function () { return {}; });
+          if (!response.ok) {
+            debugOutput.textContent = payload && payload.error ? payload.error : "Unable to check access.";
+            return;
+          }
+
+          debugOutput.textContent = "Status: " + (payload.status || "inactive");
+        } catch (_err) {
+          debugOutput.textContent = "Unable to check access.";
+        }
+      }
+
+      async function attemptAutostart() {
+        if (!shouldAutostart || autostartAttempted) {
+          return;
+        }
+
+        autostartAttempted = true;
+        const user = currentUser();
+
+        if (!user) {
+          setStatus("Sign in to continue your free trial setup.");
+          if (window.netlifyIdentity) {
+            window.netlifyIdentity.open("signup");
+          }
+          return;
+        }
+
+        await startCheckout();
+      }
+
+      if (!window.netlifyIdentity) {
+        setStatus("Sign-in service unavailable. Please refresh and try again.");
+        authBtn.disabled = true;
+        checkoutBtn.disabled = true;
+        return;
+      }
+
+      if (debugMode) {
+        debugRow.hidden = false;
+      }
+
+      authBtn.addEventListener("click", async function () {
+        const user = currentUser();
+
+        if (user) {
+          await window.netlifyIdentity.logout();
+          syncAuthUI();
+          return;
+        }
+
+        window.netlifyIdentity.open("signup");
+      });
+
+      checkoutBtn.addEventListener("click", startCheckout);
+      if (checkAccessBtn) {
+        checkAccessBtn.addEventListener("click", checkAccessDebug);
+      }
+
+      window.netlifyIdentity.on("init", async function () {
+        syncAuthUI();
+        await attemptAutostart();
+      });
+
+      window.netlifyIdentity.on("login", async function (user) {
+        window.netlifyIdentity.close();
+        setSignedInLine(user);
+        syncAuthUI();
+        if (shouldAutostart) {
+          await startCheckout();
+        }
+      });
+
+      window.netlifyIdentity.on("logout", function () {
+        setErrorVisible(false);
+        syncAuthUI();
+      });
+
+      window.netlifyIdentity.init();
+    })();
+  </script>
+</body>
+</html>

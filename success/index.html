@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trial Started — High Spire</title>
+  <meta name="description" content="Confirming your High Spire trial subscription." />
+
+  <link rel="preload" href="/assets/SortsMillGoudy-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/assets/SortsMillGoudy-Italic.ttf" as="font" type="font/ttf" crossorigin>
+
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <style>
+    @font-face {
+      font-family: "Sorts Mill Goudy";
+      src: url("/assets/SortsMillGoudy-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Sorts Mill Goudy";
+      src: url("/assets/SortsMillGoudy-Italic.ttf") format("truetype");
+      font-weight: 400;
+      font-style: italic;
+      font-display: swap;
+    }
+
+    :root{
+      --text:#0a0a0a;
+      --glass2: rgba(255,255,255,0.52);
+      --border: rgba(0,0,0,0.14);
+      --shadow: 0 22px 70px rgba(0,0,0,0.14);
+      --radius: 0px;
+      --padX: 40px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ min-height:100%; }
+
+    body{
+      margin:0;
+      font-family:"Sorts Mill Goudy", serif;
+      color: var(--text);
+      background:
+        linear-gradient(to bottom,
+          rgba(255,255,255,1) 0%,
+          rgba(255,255,255,1) 18%,
+          rgba(255,255,255,0.92) 34%,
+          rgba(255,255,255,0.65) 54%,
+          rgba(255,255,255,0.30) 72%,
+          rgba(255,255,255,0.08) 86%,
+          rgba(255,255,255,0.0) 100%
+        ),
+        url("/assets/bg.png") center / cover no-repeat fixed;
+      overscroll-behavior: none;
+    }
+
+    header{
+      position: fixed;
+      top:0; left:0; right:0;
+      z-index: 30;
+      padding: 16px var(--padX);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background: rgba(255,255,255,0.82);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      text-decoration:none;
+      color:inherit;
+      min-width: 240px;
+    }
+    .brand img{
+      height: 34px;
+      width: auto;
+      display:block;
+    }
+    .brand span{
+      font-size: 18px;
+      letter-spacing: 0.01em;
+      opacity: 0.9;
+    }
+
+    .link{
+      padding: 10px 10px;
+      border-radius: 0;
+      text-decoration:none;
+      color:inherit;
+      font-size: 16px;
+      opacity: 0.82;
+      transition: background .18s ease, opacity .18s ease;
+    }
+    .link:hover{
+      background: rgba(255,255,255,0.55);
+      opacity: 1;
+    }
+
+    main{
+      min-height: 100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 96px var(--padX) 40px;
+    }
+
+    .panel{
+      width: min(780px, 100%);
+      padding: 44px 42px 36px;
+      background: var(--glass2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      text-align:center;
+    }
+
+    h1{
+      margin:0 0 14px;
+      font-size: 66px;
+      letter-spacing: 0.01em;
+      line-height: 1;
+    }
+
+    .subtitle{
+      margin: 0 auto 10px;
+      font-size: 22px;
+      line-height: 1.45;
+      max-width: 58ch;
+      opacity: 0.9;
+      min-height: 2.9em;
+    }
+
+    .signedIn{
+      min-height: 1.25em;
+      margin: 0 0 18px;
+      font-size: 16px;
+      opacity: 0.78;
+    }
+
+    .ctaRow{
+      display:flex;
+      justify-content:center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .btn{
+      font-family: inherit;
+      font-size: 18px;
+      padding: 12px 18px;
+      border-radius: 0;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.94);
+      cursor:pointer;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.10);
+      transition: transform .08s ease, background .18s ease, opacity .18s ease;
+      text-decoration:none;
+      color: inherit;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width: 180px;
+    }
+
+    .btn:hover{ transform: translateY(-1px); }
+
+    .btn.secondary{
+      background: rgba(255,255,255,0.62);
+      box-shadow: none;
+    }
+
+    .btn:disabled{
+      transform: none;
+      opacity: 0.52;
+      cursor: not-allowed;
+    }
+
+    .btn:focus-visible,
+    .link:focus-visible {
+      outline: 2px solid rgba(0, 0, 0, 0.85);
+      outline-offset: 2px;
+    }
+
+    .debugRow{
+      margin-top: 16px;
+      border-top: 1px solid rgba(0,0,0,0.12);
+      padding-top: 14px;
+      text-align: left;
+    }
+
+    .debugOut{
+      margin: 10px 0 0;
+      font-size: 14px;
+      opacity: 0.72;
+      word-break: break-word;
+      min-height: 1.2em;
+    }
+
+    @media (max-width: 720px){
+      :root{ --padX: 18px; }
+      header{ padding: 14px var(--padX); }
+      .brand span{ display:none; }
+      .brand{ min-width: auto; }
+      h1{ font-size: 46px; }
+      .panel{ padding: 32px 22px 26px; }
+      .subtitle{ font-size: 18px; min-height: 3.5em; }
+      .btn{ min-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/" aria-label="High Spire Home">
+      <img src="/assets/logo.png" alt="High Spire">
+      <span>High Spire</span>
+    </a>
+    <a class="link" href="/trial">Back to trial</a>
+  </header>
+
+  <main>
+    <section class="panel" aria-label="Subscription status">
+      <h1>Trial started.</h1>
+      <p id="statusText" class="subtitle" aria-live="polite">Checking your subscription status...</p>
+      <p id="signedInLine" class="signedIn" aria-live="polite"></p>
+
+      <div class="ctaRow">
+        <a id="enterAppBtn" class="btn" href="/" hidden>Enter App</a>
+        <button id="manageBillingBtn" class="btn secondary" type="button" hidden>Manage Billing</button>
+        <button id="signinBtn" class="btn secondary" type="button" hidden>Sign In / Create Account</button>
+      </div>
+
+      <div id="debugRow" class="debugRow" hidden>
+        <button id="checkAccessBtn" class="btn secondary" type="button">Check access</button>
+        <p id="debugOutput" class="debugOut" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script>
+    (function () {
+      const statusText = document.getElementById("statusText");
+      const signedInLine = document.getElementById("signedInLine");
+      const enterAppBtn = document.getElementById("enterAppBtn");
+      const manageBillingBtn = document.getElementById("manageBillingBtn");
+      const signinBtn = document.getElementById("signinBtn");
+      const debugRow = document.getElementById("debugRow");
+      const debugOutput = document.getElementById("debugOutput");
+      const checkAccessBtn = document.getElementById("checkAccessBtn");
+
+      const POLL_INTERVAL_MS = 2000;
+      const POLL_TIMEOUT_MS = 20000;
+      const params = new URLSearchParams(window.location.search);
+      const debugMode = params.get("debug") === "1";
+      const fallbackAppUrl = "/";
+
+      function currentUser() {
+        return window.netlifyIdentity ? window.netlifyIdentity.currentUser() : null;
+      }
+
+      function isUnlockedStatus(status) {
+        return status === "active" || status === "trialing";
+      }
+
+      function setSignedInLine(user) {
+        if (!user || !user.email) {
+          signedInLine.textContent = "";
+          return;
+        }
+        signedInLine.textContent = "Signed in as " + user.email;
+      }
+
+      async function getIdentityToken(user) {
+        if (!user || typeof user.jwt !== "function") {
+          return null;
+        }
+        return user.jwt(true);
+      }
+
+      async function fetchMe() {
+        const user = currentUser();
+        if (!user) {
+          return { status: "unauthenticated" };
+        }
+
+        const token = await getIdentityToken(user);
+        const response = await fetch("/.netlify/functions/me", {
+          method: "GET",
+          headers: {
+            Authorization: token ? "Bearer " + token : "",
+          },
+        });
+
+        const payload = await response.json().catch(function () { return {}; });
+        if (!response.ok) {
+          throw new Error(payload && payload.error ? payload.error : "Unable to fetch status.");
+        }
+
+        return payload;
+      }
+
+      function setUnlockedUI(payload) {
+        const appUrl = (payload && payload.app_url) || fallbackAppUrl;
+        statusText.textContent = "Your trial is active. You can enter the app now.";
+        enterAppBtn.hidden = false;
+        enterAppBtn.href = appUrl;
+        manageBillingBtn.hidden = false;
+        signinBtn.hidden = true;
+      }
+
+      function setWaitingUI() {
+        statusText.textContent = "We're confirming your subscription...";
+        enterAppBtn.hidden = true;
+        manageBillingBtn.hidden = true;
+        signinBtn.hidden = true;
+      }
+
+      function setSignedOutUI() {
+        statusText.textContent = "Sign in to confirm your subscription and continue.";
+        enterAppBtn.hidden = true;
+        manageBillingBtn.hidden = true;
+        signinBtn.hidden = false;
+      }
+
+      async function pollForAccess() {
+        const start = Date.now();
+        setWaitingUI();
+
+        while (Date.now() - start <= POLL_TIMEOUT_MS) {
+          const payload = await fetchMe();
+          if (isUnlockedStatus(payload.status)) {
+            setUnlockedUI(payload);
+            return;
+          }
+          await new Promise(function (resolve) { setTimeout(resolve, POLL_INTERVAL_MS); });
+        }
+
+        statusText.textContent = "We're confirming your subscription. Please refresh in a moment.";
+      }
+
+      async function refreshAccess() {
+        const user = currentUser();
+        setSignedInLine(user);
+
+        if (!user) {
+          setSignedOutUI();
+          return;
+        }
+
+        try {
+          const payload = await fetchMe();
+          if (isUnlockedStatus(payload.status)) {
+            setUnlockedUI(payload);
+            return;
+          }
+          await pollForAccess();
+        } catch (_err) {
+          statusText.textContent = "We couldn't verify your subscription right now. Please try again.";
+        }
+      }
+
+      async function handleBillingPortal() {
+        const user = currentUser();
+        if (!user) {
+          setSignedOutUI();
+          return;
+        }
+
+        try {
+          const token = await getIdentityToken(user);
+          const response = await fetch("/.netlify/functions/create-portal-session", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: token ? "Bearer " + token : "",
+            },
+            body: "{}",
+          });
+          const payload = await response.json().catch(function () { return {}; });
+          if (!response.ok || !payload.url) {
+            throw new Error(payload && payload.error ? payload.error : "Unable to open billing portal.");
+          }
+          window.location.assign(payload.url);
+        } catch (_err) {
+          statusText.textContent = "Billing portal unavailable right now. Please try again.";
+        }
+      }
+
+      async function checkAccessDebug() {
+        try {
+          const payload = await fetchMe();
+          debugOutput.textContent = "Status: " + (payload.status || "inactive");
+        } catch (err) {
+          debugOutput.textContent = err && err.message ? err.message : "Unable to check access.";
+        }
+      }
+
+      if (!window.netlifyIdentity) {
+        statusText.textContent = "Sign-in service unavailable. Please refresh and try again.";
+        return;
+      }
+
+      if (debugMode) {
+        debugRow.hidden = false;
+      }
+
+      signinBtn.addEventListener("click", function () {
+        window.netlifyIdentity.open("signup");
+      });
+
+      manageBillingBtn.addEventListener("click", handleBillingPortal);
+      checkAccessBtn.addEventListener("click", checkAccessDebug);
+
+      window.netlifyIdentity.on("init", refreshAccess);
+      window.netlifyIdentity.on("login", function () {
+        window.netlifyIdentity.close();
+        refreshAccess();
+      });
+      window.netlifyIdentity.on("logout", function () {
+        refreshAccess();
+      });
+
+      window.netlifyIdentity.init();
+    })();
+  </script>
+</body>
+</html>
