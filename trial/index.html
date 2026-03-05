@@ -315,7 +315,7 @@
   <main>
     <section class="panel" aria-label="Free trial checkout">
       <h1>Start Your Free Trial</h1>
-      <p class="subtitle">Continue to Stripe Checkout to start your trial subscription.</p>
+      <p class="subtitle"></p>
       <p id="signedInLine" class="signedIn" aria-live="polite"></p>
 
       <section class="planTile" aria-label="Plan details">
@@ -390,7 +390,7 @@
           return;
         }
         signedInLine.textContent = "";
-        setStatus("Continue to checkout to start your trial.");
+        setStatus("");
       }
 
       async function getIdentityToken(user) {
