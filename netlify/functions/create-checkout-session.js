@@ -1,7 +1,9 @@
 const Stripe = require("stripe");
+const crypto = require("crypto");
 const { getWebsiteUser } = require("./_lib/auth");
 const {
   withClient,
+  isDatabaseConnectivityError,
   ensureUser,
   findOrCreateUserByEmail,
   getStripeCustomerForUser,
@@ -13,14 +15,49 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-async function findOrCreateCustomer(stripe, user) {
-  const existing = await withClient(async (client) => {
-    await ensureUser(client, user);
-    return getStripeCustomerForUser(client, user.id);
+function deriveUserIdFromEmail(email) {
+  const hex = crypto.createHash("sha256").update(String(email).toLowerCase()).digest("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
+async function findStripeCustomerByEmail(stripe, email) {
+  const result = await stripe.customers.list({
+    email: email.toLowerCase(),
+    limit: 1,
   });
+  return result.data[0] || null;
+}
+
+async function findOrCreateCustomer(stripe, user) {
+  let existing = null;
+  try {
+    existing = await withClient(async (client) => {
+      await ensureUser(client, user);
+      return getStripeCustomerForUser(client, user.id);
+    });
+  } catch (err) {
+    if (!isDatabaseConnectivityError(err)) {
+      throw err;
+    }
+  }
 
   if (existing) {
     return existing;
+  }
+
+  const existingStripeCustomer = await findStripeCustomerByEmail(stripe, user.email);
+  if (existingStripeCustomer) {
+    try {
+      await withClient(async (client) => {
+        await ensureUser(client, user);
+        await upsertStripeCustomer(client, user.id, existingStripeCustomer.id);
+      });
+    } catch (err) {
+      if (!isDatabaseConnectivityError(err)) {
+        throw err;
+      }
+    }
+    return existingStripeCustomer.id;
   }
 
   const customer = await stripe.customers.create({
@@ -28,10 +65,16 @@ async function findOrCreateCustomer(stripe, user) {
     metadata: { user_id: user.id },
   });
 
-  await withClient(async (client) => {
-    await ensureUser(client, user);
-    await upsertStripeCustomer(client, user.id, customer.id);
-  });
+  try {
+    await withClient(async (client) => {
+      await ensureUser(client, user);
+      await upsertStripeCustomer(client, user.id, customer.id);
+    });
+  } catch (err) {
+    if (!isDatabaseConnectivityError(err)) {
+      throw err;
+    }
+  }
 
   return customer.id;
 }
@@ -73,11 +116,25 @@ exports.handler = async (event) => {
 
   try {
     const stripe = new Stripe(secretKey);
-    const user = websiteUser
-      ? websiteUser
-      : await withClient((client) => findOrCreateUserByEmail(client, guestEmail));
+    let user;
+    if (websiteUser) {
+      user = websiteUser;
+    } else {
+      try {
+        user = await withClient((client) => findOrCreateUserByEmail(client, guestEmail));
+      } catch (err) {
+        if (!isDatabaseConnectivityError(err)) {
+          throw err;
+        }
+        user = {
+          id: deriveUserIdFromEmail(guestEmail),
+          email: guestEmail.toLowerCase(),
+        };
+      }
+    }
+
     const normalizedUser = {
-      id: String(user.id),
+      id: String(user.id || deriveUserIdFromEmail(user.email)),
       email: String(user.email).toLowerCase(),
     };
     const stripeCustomerId = await findOrCreateCustomer(stripe, normalizedUser);

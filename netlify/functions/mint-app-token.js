@@ -1,8 +1,10 @@
 const Stripe = require("stripe");
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { getWebsiteUser } = require("./_lib/auth");
 const {
   withClient,
+  isDatabaseConnectivityError,
   ensureUser,
   getUserById,
   getUserIdByStripeCustomer,
@@ -41,6 +43,11 @@ function normalizeUserRecord(row) {
     id: String(row.id),
     email: String(row.email).toLowerCase(),
   };
+}
+
+function deriveUserIdFromEmail(email) {
+  const hex = crypto.createHash("sha256").update(String(email).toLowerCase()).digest("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
 function normalizeSubscriptionStatus(status) {
@@ -129,47 +136,67 @@ async function resolveUserFromSession(sessionId, stripe) {
   const customerId = getSessionCustomerId(session);
   const email = getSessionEmail(session);
 
-  const user = await withClient(async (client) => {
-    let row = null;
+  try {
+    const user = await withClient(async (client) => {
+      let row = null;
 
-    if (metadataUserId) {
-      row = await getUserById(client, metadataUserId);
+      if (metadataUserId) {
+        row = await getUserById(client, metadataUserId);
+        if (!row) {
+          if (!email) {
+            const err = new Error("Unable to resolve checkout user email.");
+            err.statusCode = 400;
+            throw err;
+          }
+          row = await ensureUser(client, { id: metadataUserId, email });
+        } else if (email && row.email.toLowerCase() !== email) {
+          row = await ensureUser(client, { id: row.id, email });
+        }
+      }
+
+      if (!row && customerId) {
+        const mappedUserId = await getUserIdByStripeCustomer(client, customerId);
+        if (mappedUserId) {
+          row = await getUserById(client, mappedUserId);
+        }
+      }
+
       if (!row) {
         if (!email) {
-          const err = new Error("Unable to resolve checkout user email.");
+          const err = new Error("Unable to resolve user for checkout session.");
           err.statusCode = 400;
           throw err;
         }
-        row = await ensureUser(client, { id: metadataUserId, email });
-      } else if (email && row.email.toLowerCase() !== email) {
-        row = await ensureUser(client, { id: row.id, email });
+        row = await findOrCreateUserByEmail(client, email);
       }
-    }
 
-    if (!row && customerId) {
-      const mappedUserId = await getUserIdByStripeCustomer(client, customerId);
-      if (mappedUserId) {
-        row = await getUserById(client, mappedUserId);
+      if (customerId) {
+        await upsertStripeCustomer(client, row.id, customerId);
       }
+
+      return normalizeUserRecord(row);
+    });
+
+    return { user, session };
+  } catch (err) {
+    if (!isDatabaseConnectivityError(err)) {
+      throw err;
     }
 
-    if (!row) {
-      if (!email) {
-        const err = new Error("Unable to resolve user for checkout session.");
-        err.statusCode = 400;
-        throw err;
-      }
-      row = await findOrCreateUserByEmail(client, email);
+    if (!email) {
+      const fallbackErr = new Error("Unable to resolve checkout user email.");
+      fallbackErr.statusCode = 400;
+      throw fallbackErr;
     }
 
-    if (customerId) {
-      await upsertStripeCustomer(client, row.id, customerId);
-    }
-
-    return normalizeUserRecord(row);
-  });
-
-  return { user, session };
+    return {
+      user: {
+        id: metadataUserId || deriveUserIdFromEmail(email),
+        email,
+      },
+      session,
+    };
+  }
 }
 
 async function syncEntitlementFromSession(stripe, userId, session) {
@@ -185,9 +212,15 @@ async function syncEntitlementFromSession(stripe, userId, session) {
   }
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-  await withClient(async (client) => {
-    await upsertEntitlement(client, userId, subscription);
-  });
+  try {
+    await withClient(async (client) => {
+      await upsertEntitlement(client, userId, subscription);
+    });
+  } catch (err) {
+    if (!isDatabaseConnectivityError(err)) {
+      throw err;
+    }
+  }
 }
 
 exports.handler = async (event) => {
@@ -232,9 +265,15 @@ exports.handler = async (event) => {
       await syncEntitlementFromSession(stripe, user.id, session);
     }
 
-    await withClient(async (client) => {
-      await ensureUser(client, user);
-    });
+    try {
+      await withClient(async (client) => {
+        await ensureUser(client, user);
+      });
+    } catch (err) {
+      if (!isDatabaseConnectivityError(err)) {
+        throw err;
+      }
+    }
 
     const token = jwt.sign(
       {

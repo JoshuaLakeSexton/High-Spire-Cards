@@ -1,6 +1,6 @@
 const Stripe = require("stripe");
 const { getWebsiteUser, verifyAppToken } = require("./_lib/auth");
-const { withClient, getStripeCustomerForUser } = require("./_lib/db");
+const { withClient, isDatabaseConnectivityError, getStripeCustomerForUser } = require("./_lib/db");
 const { json, methodNotAllowed, normalizeBaseUrl } = require("./_lib/http");
 
 function resolveAuthenticatedUser(event) {
@@ -44,15 +44,30 @@ exports.handler = async (event) => {
   const returnUrl = process.env.STRIPE_PORTAL_RETURN_URL || `${siteUrl}/success`;
 
   try {
-    const stripeCustomerId = await withClient((client) =>
-      getStripeCustomerForUser(client, user.id)
-    );
+    const stripe = new Stripe(secretKey);
+    let stripeCustomerId = null;
+    try {
+      stripeCustomerId = await withClient((client) => getStripeCustomerForUser(client, user.id));
+    } catch (err) {
+      if (!isDatabaseConnectivityError(err)) {
+        throw err;
+      }
+    }
+
+    if (!stripeCustomerId && user.email) {
+      const customers = await stripe.customers.list({
+        email: user.email.toLowerCase(),
+        limit: 1,
+      });
+      if (customers.data.length) {
+        stripeCustomerId = customers.data[0].id;
+      }
+    }
 
     if (!stripeCustomerId) {
       return json(404, { error: "No Stripe customer found for this user." });
     }
 
-    const stripe = new Stripe(secretKey);
     const session = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
       return_url: returnUrl,
