@@ -60,9 +60,7 @@ exports.handler = async (event) => {
   }
 
   const identityUser = event.clientContext && event.clientContext.user;
-  if (!identityUser || !identityUser.email || !identityUser.sub) {
-    return json(401, { error: "Authentication required. Please sign in and try again." });
-  }
+  const hasIdentity = Boolean(identityUser && identityUser.email && identityUser.sub);
 
   const secretKey = process.env.STRIPE_SECRET_KEY;
   const configuredPriceId = process.env.STRIPE_PRICE_ID_PRO || process.env.STRIPE_PRICE_ID;
@@ -87,6 +85,8 @@ exports.handler = async (event) => {
     return json(400, { error: "Requested price does not match configured plan." });
   }
 
+  const guestEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+
   const useTrial = body.trial !== false;
   const trialDaysRaw = Number.parseInt(process.env.STRIPE_TRIAL_DAYS || "3", 10);
   const trialDays = Number.isFinite(trialDaysRaw) && trialDaysRaw > 0 ? trialDaysRaw : 3;
@@ -95,22 +95,26 @@ exports.handler = async (event) => {
 
   try {
     const stripe = new Stripe(secretKey);
-    const userId = identityUser.sub;
-    const email = String(identityUser.email).toLowerCase();
-    const customer = await findOrCreateCustomer(stripe, { userId, email });
-
     const sessionPayload = {
       mode: "subscription",
-      customer: customer.id,
       line_items: [{ price: configuredPriceId, quantity: 1 }],
       payment_method_collection: "always",
       success_url: `${siteUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/trial`,
-      metadata: { user_id: userId },
-      subscription_data: {
-        metadata: { user_id: userId },
-      },
+      metadata: {},
+      subscription_data: { metadata: {} },
     };
+
+    if (hasIdentity) {
+      const userId = identityUser.sub;
+      const email = String(identityUser.email).toLowerCase();
+      const customer = await findOrCreateCustomer(stripe, { userId, email });
+      sessionPayload.customer = customer.id;
+      sessionPayload.metadata.user_id = userId;
+      sessionPayload.subscription_data.metadata.user_id = userId;
+    } else if (guestEmail) {
+      sessionPayload.customer_email = guestEmail;
+    }
 
     if (useTrial) {
       sessionPayload.subscription_data.trial_period_days = trialDays;

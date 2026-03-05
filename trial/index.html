@@ -51,16 +51,14 @@
       font-family:"Sorts Mill Goudy", serif;
       color: var(--text);
       background:
-        linear-gradient(to bottom,
-          rgba(255,255,255,1) 0%,
-          rgba(255,255,255,1) 18%,
-          rgba(255,255,255,0.92) 34%,
-          rgba(255,255,255,0.65) 54%,
-          rgba(255,255,255,0.30) 72%,
-          rgba(255,255,255,0.08) 86%,
-          rgba(255,255,255,0.0) 100%
+        linear-gradient(
+          to bottom,
+          rgba(255,255,255,0.92) 0%,
+          rgba(255,255,255,0.86) 24%,
+          rgba(255,255,255,0.70) 56%,
+          rgba(255,255,255,0.42) 100%
         ),
-        url("/assets/bg.png") center / cover no-repeat fixed;
+        url("/assets/trial-background.svg") center / cover no-repeat fixed;
       overscroll-behavior: none;
     }
 
@@ -386,9 +384,14 @@
 
       let checkoutInFlight = false;
       let autostartAttempted = false;
+      let identityConfigured = false;
 
       function currentUser() {
         return window.netlifyIdentity ? window.netlifyIdentity.currentUser() : null;
+      }
+
+      function canUseIdentity() {
+        return Boolean(window.netlifyIdentity && identityConfigured);
       }
 
       function setStatus(message) {
@@ -409,7 +412,7 @@
 
       function setCheckoutBusy(isBusy) {
         checkoutInFlight = isBusy;
-        checkoutBtn.disabled = isBusy || !currentUser();
+        checkoutBtn.disabled = isBusy;
         authBtn.disabled = isBusy;
         checkoutBtn.textContent = isBusy ? "Starting checkout..." : "Continue to Checkout";
       }
@@ -422,10 +425,42 @@
           authBtn.textContent = "Sign Out";
           checkoutBtn.disabled = checkoutInFlight;
           setStatus("Signed in. Continue to Stripe Checkout when ready.");
-        } else {
-          authBtn.textContent = "Sign In / Create Account";
-          checkoutBtn.disabled = true;
+          return;
+        }
+
+        authBtn.textContent = "Sign In / Create Account";
+        checkoutBtn.disabled = checkoutInFlight;
+
+        if (canUseIdentity()) {
           setStatus("Please sign in to continue.");
+          return;
+        }
+
+        setStatus("Sign in is unavailable right now. You can continue directly to checkout.");
+      }
+
+      async function detectIdentityBackend() {
+        try {
+          const response = await fetch("/.netlify/identity/settings", {
+            method: "GET",
+            cache: "no-store",
+          });
+          return response.ok;
+        } catch (_err) {
+          return false;
+        }
+      }
+
+      function openIdentityWidget(mode) {
+        if (!window.netlifyIdentity || !canUseIdentity()) {
+          return false;
+        }
+
+        try {
+          window.netlifyIdentity.open(mode || "signup");
+          return true;
+        } catch (_err) {
+          return false;
         }
       }
 
@@ -442,12 +477,10 @@
         }
 
         const user = currentUser();
-        if (!user) {
+        if (!user && canUseIdentity()) {
           setStatus("Please sign in before checkout.");
           setErrorVisible(false);
-          if (window.netlifyIdentity) {
-            window.netlifyIdentity.open("signup");
-          }
+          openIdentityWidget("signup");
           return;
         }
 
@@ -457,16 +490,27 @@
 
         try {
           const token = await getIdentityToken(user);
+          const body = { trial: true };
+          if (user && user.email) {
+            body.email = user.email;
+          }
           const response = await fetch("/.netlify/functions/create-checkout-session", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: token ? "Bearer " + token : "",
+              ...(token ? { Authorization: "Bearer " + token } : {}),
             },
-            body: JSON.stringify({ trial: true }),
+            body: JSON.stringify(body),
           });
 
           const payload = await response.json().catch(function () { return {}; });
+          if (response.status === 401 && canUseIdentity()) {
+            setCheckoutBusy(false);
+            setStatus("Please sign in before checkout.");
+            openIdentityWidget("signup");
+            return;
+          }
+
           if (!response.ok || !payload.url) {
             throw new Error(payload && payload.error ? payload.error : "Checkout unavailable");
           }
@@ -515,22 +559,13 @@
         autostartAttempted = true;
         const user = currentUser();
 
-        if (!user) {
+        if (!user && canUseIdentity()) {
           setStatus("Sign in to continue your free trial setup.");
-          if (window.netlifyIdentity) {
-            window.netlifyIdentity.open("signup");
-          }
+          openIdentityWidget("signup");
           return;
         }
 
         await startCheckout();
-      }
-
-      if (!window.netlifyIdentity) {
-        setStatus("Sign-in service unavailable. Please refresh and try again.");
-        authBtn.disabled = true;
-        checkoutBtn.disabled = true;
-        return;
       }
 
       if (debugMode) {
@@ -546,7 +581,12 @@
           return;
         }
 
-        window.netlifyIdentity.open("signup");
+        if (openIdentityWidget("signup")) {
+          return;
+        }
+
+        setStatus("Sign-in unavailable. Continuing to checkout...");
+        await startCheckout();
       });
 
       checkoutBtn.addEventListener("click", startCheckout);
@@ -554,7 +594,15 @@
         checkAccessBtn.addEventListener("click", checkAccessDebug);
       }
 
+      // Render a usable UI immediately even if identity init never resolves.
+      syncAuthUI();
+
+      if (!window.netlifyIdentity) {
+        return;
+      }
+
       window.netlifyIdentity.on("init", async function () {
+        identityConfigured = await detectIdentityBackend();
         syncAuthUI();
         await attemptAutostart();
       });

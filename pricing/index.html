@@ -25,7 +25,10 @@
       min-height: 100vh;
       font-family: "Georgia", "Times New Roman", serif;
       color: var(--ink);
-      background: radial-gradient(circle at top, rgba(255, 255, 255, 0.65), transparent 45%), var(--bg);
+      background:
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.44)),
+        url("/assets/pricing-hs.svg") center / cover no-repeat fixed,
+        var(--bg);
       display: grid;
       place-items: center;
       padding: 24px;
