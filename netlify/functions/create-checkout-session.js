@@ -1,128 +1,92 @@
 const Stripe = require("stripe");
+const { requireWebsiteUser } = require("./_lib/auth");
+const {
+  withClient,
+  ensureUser,
+  getStripeCustomerForUser,
+  upsertStripeCustomer,
+} = require("./_lib/db");
+const { json, methodNotAllowed, normalizeBaseUrl, parseJsonBody } = require("./_lib/http");
 
-const JSON_HEADERS = { "Content-Type": "application/json" };
+async function findOrCreateCustomer(stripe, user) {
+  const existing = await withClient(async (client) => {
+    await ensureUser(client, user);
+    return getStripeCustomerForUser(client, user.id);
+  });
 
-function json(statusCode, payload) {
-  return {
-    statusCode,
-    headers: JSON_HEADERS,
-    body: JSON.stringify(payload),
-  };
-}
-
-function parseBody(event) {
-  if (!event.body) {
-    return {};
+  if (existing) {
+    return existing;
   }
 
-  try {
-    return JSON.parse(event.body);
-  } catch (_err) {
-    return null;
-  }
-}
+  const customer = await stripe.customers.create({
+    email: user.email,
+    metadata: { user_id: user.id },
+  });
 
-function normalizeBaseUrl(input, fallback) {
-  const source = typeof input === "string" && input.trim() ? input.trim() : fallback;
-  return source.replace(/\/+$/, "");
-}
+  await withClient(async (client) => {
+    await ensureUser(client, user);
+    await upsertStripeCustomer(client, user.id, customer.id);
+  });
 
-async function findOrCreateCustomer(stripe, { userId, email }) {
-  const listed = await stripe.customers.list({ email, limit: 10 });
-
-  let customer =
-    listed.data.find((item) => item.metadata && item.metadata.user_id === userId) ||
-    listed.data[0] ||
-    null;
-
-  if (!customer) {
-    customer = await stripe.customers.create({
-      email,
-      metadata: { user_id: userId },
-    });
-    return customer;
-  }
-
-  const shouldPatchMetadata = !customer.metadata || customer.metadata.user_id !== userId;
-  if (shouldPatchMetadata) {
-    customer = await stripe.customers.update(customer.id, {
-      email,
-      metadata: { ...(customer.metadata || {}), user_id: userId },
-    });
-  }
-
-  return customer;
+  return customer.id;
 }
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
-    return json(405, { error: "Method Not Allowed" });
+    return methodNotAllowed();
   }
 
-  const identityUser = event.clientContext && event.clientContext.user;
-  const hasIdentity = Boolean(identityUser && identityUser.email && identityUser.sub);
+  let websiteUser;
+  try {
+    websiteUser = requireWebsiteUser(event);
+  } catch (err) {
+    return json(err.statusCode || 500, { error: err.message || "Authentication required." });
+  }
+
+  const body = parseJsonBody(event);
+  if (body === null) {
+    return json(400, { error: "Invalid JSON body." });
+  }
 
   const secretKey = process.env.STRIPE_SECRET_KEY;
-  const configuredPriceId = process.env.STRIPE_PRICE_ID_PRO || process.env.STRIPE_PRICE_ID;
-
+  const priceId = process.env.STRIPE_PRICE_ID_PRO || process.env.STRIPE_PRICE_ID;
   if (!secretKey) {
     return json(500, { error: "Server misconfiguration: STRIPE_SECRET_KEY is missing." });
   }
-
-  if (!configuredPriceId) {
-    return json(500, {
-      error: "Server misconfiguration: STRIPE_PRICE_ID_PRO (or STRIPE_PRICE_ID) is missing.",
-    });
-  }
-
-  const body = parseBody(event);
-  if (body === null) {
-    return json(400, { error: "Invalid JSON request body." });
+  if (!priceId) {
+    return json(500, { error: "Server misconfiguration: STRIPE_PRICE_ID_PRO is missing." });
   }
 
   const requestedPriceId = typeof body.priceId === "string" ? body.priceId.trim() : "";
-  if (requestedPriceId && requestedPriceId !== configuredPriceId) {
+  if (requestedPriceId && requestedPriceId !== priceId) {
     return json(400, { error: "Requested price does not match configured plan." });
   }
 
-  const guestEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-
+  const siteUrl = normalizeBaseUrl(process.env.PUBLIC_SITE_URL, "https://highspirelearning.com");
   const useTrial = body.trial !== false;
   const trialDaysRaw = Number.parseInt(process.env.STRIPE_TRIAL_DAYS || "3", 10);
   const trialDays = Number.isFinite(trialDaysRaw) && trialDaysRaw > 0 ? trialDaysRaw : 3;
 
-  const siteUrl = normalizeBaseUrl(process.env.PUBLIC_SITE_URL, "https://highspirelearning.com");
-
   try {
     const stripe = new Stripe(secretKey);
-    const sessionPayload = {
+    const stripeCustomerId = await findOrCreateCustomer(stripe, websiteUser);
+
+    const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      line_items: [{ price: configuredPriceId, quantity: 1 }],
+      customer: stripeCustomerId,
+      line_items: [{ price: priceId, quantity: 1 }],
       payment_method_collection: "always",
       success_url: `${siteUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/trial`,
-      metadata: {},
-      subscription_data: { metadata: {} },
-    };
+      metadata: { user_id: websiteUser.id },
+      subscription_data: {
+        metadata: { user_id: websiteUser.id },
+        ...(useTrial ? { trial_period_days: trialDays } : {}),
+      },
+    });
 
-    if (hasIdentity) {
-      const userId = identityUser.sub;
-      const email = String(identityUser.email).toLowerCase();
-      const customer = await findOrCreateCustomer(stripe, { userId, email });
-      sessionPayload.customer = customer.id;
-      sessionPayload.metadata.user_id = userId;
-      sessionPayload.subscription_data.metadata.user_id = userId;
-    } else if (guestEmail) {
-      sessionPayload.customer_email = guestEmail;
-    }
-
-    if (useTrial) {
-      sessionPayload.subscription_data.trial_period_days = trialDays;
-    }
-
-    const session = await stripe.checkout.sessions.create(sessionPayload);
     if (!session.url) {
-      return json(500, { error: "Stripe session created without a redirect URL." });
+      return json(500, { error: "Stripe did not return a checkout URL." });
     }
 
     return json(200, { url: session.url });

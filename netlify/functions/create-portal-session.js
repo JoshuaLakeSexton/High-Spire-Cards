@@ -1,43 +1,22 @@
 const Stripe = require("stripe");
-
-const JSON_HEADERS = { "Content-Type": "application/json" };
-
-function json(statusCode, payload) {
-  return {
-    statusCode,
-    headers: JSON_HEADERS,
-    body: JSON.stringify(payload),
-  };
-}
-
-function normalizeBaseUrl(input, fallback) {
-  const source = typeof input === "string" && input.trim() ? input.trim() : fallback;
-  return source.replace(/\/+$/, "");
-}
-
-async function findCustomerByIdentity(stripe, { email, userId }) {
-  const listed = await stripe.customers.list({ email, limit: 10 });
-  if (!listed.data.length) {
-    return null;
-  }
-  return (
-    listed.data.find((item) => item.metadata && item.metadata.user_id === userId) ||
-    listed.data[0] ||
-    null
-  );
-}
+const { requireWebsiteUser } = require("./_lib/auth");
+const { withClient, getStripeCustomerForUser } = require("./_lib/db");
+const { json, methodNotAllowed, normalizeBaseUrl } = require("./_lib/http");
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
-    return json(405, { error: "Method Not Allowed" });
+    return methodNotAllowed();
   }
 
-  const identityUser = event.clientContext && event.clientContext.user;
-  if (!identityUser || !identityUser.email || !identityUser.sub) {
-    return json(401, { error: "Authentication required. Please sign in and try again." });
+  let websiteUser;
+  try {
+    websiteUser = requireWebsiteUser(event);
+  } catch (err) {
+    return json(err.statusCode || 500, { error: err.message || "Authentication required." });
   }
 
-  if (!process.env.STRIPE_SECRET_KEY) {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
     return json(500, { error: "Server misconfiguration: STRIPE_SECRET_KEY is missing." });
   }
 
@@ -45,17 +24,17 @@ exports.handler = async (event) => {
   const returnUrl = process.env.STRIPE_PORTAL_RETURN_URL || `${siteUrl}/success`;
 
   try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    const email = String(identityUser.email).toLowerCase();
-    const userId = identityUser.sub;
-    const customer = await findCustomerByIdentity(stripe, { email, userId });
+    const stripeCustomerId = await withClient((client) =>
+      getStripeCustomerForUser(client, websiteUser.id)
+    );
 
-    if (!customer) {
-      return json(404, { error: "No Stripe customer found for this account." });
+    if (!stripeCustomerId) {
+      return json(404, { error: "No Stripe customer found for this user." });
     }
 
+    const stripe = new Stripe(secretKey);
     const session = await stripe.billingPortal.sessions.create({
-      customer: customer.id,
+      customer: stripeCustomerId,
       return_url: returnUrl,
     });
 

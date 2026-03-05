@@ -311,8 +311,38 @@
         return payload;
       }
 
-      function setUnlockedUI(payload) {
-        const appUrl = (payload && payload.app_url) || fallbackAppUrl;
+      async function mintAppLink() {
+        const user = currentUser();
+        if (!user) {
+          return fallbackAppUrl;
+        }
+
+        const token = await getIdentityToken(user);
+        const response = await fetch("/.netlify/functions/mint-app-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? "Bearer " + token : "",
+          },
+          body: "{}",
+        });
+
+        const payload = await response.json().catch(function () { return {}; });
+        if (!response.ok || !payload.app_url) {
+          throw new Error(payload && payload.error ? payload.error : "Unable to mint app access token.");
+        }
+
+        return payload.app_url;
+      }
+
+      async function setUnlockedUI(_payload) {
+        let appUrl = fallbackAppUrl;
+        try {
+          appUrl = await mintAppLink();
+        } catch (_err) {
+          statusText.textContent = "Subscription active. App token not ready yet, retrying…";
+        }
+
         statusText.textContent = "Your trial is active. You can enter the app now.";
         enterAppBtn.hidden = false;
         enterAppBtn.href = appUrl;
@@ -341,7 +371,7 @@
         while (Date.now() - start <= POLL_TIMEOUT_MS) {
           const payload = await fetchMe();
           if (isUnlockedStatus(payload.status)) {
-            setUnlockedUI(payload);
+            await setUnlockedUI(payload);
             return;
           }
           await new Promise(function (resolve) { setTimeout(resolve, POLL_INTERVAL_MS); });
@@ -362,7 +392,7 @@
         try {
           const payload = await fetchMe();
           if (isUnlockedStatus(payload.status)) {
-            setUnlockedUI(payload);
+            await setUnlockedUI(payload);
             return;
           }
           await pollForAccess();

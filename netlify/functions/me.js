@@ -1,149 +1,86 @@
-const Stripe = require("stripe");
+const { getBearerToken, getWebsiteUser, verifyAppToken } = require("./_lib/auth");
+const { withClient, ensureUser } = require("./_lib/db");
+const { json, methodNotAllowed, toIsoString } = require("./_lib/http");
 
-const JSON_HEADERS = { "Content-Type": "application/json" };
+const ACTIVE_STATUSES = new Set(["active", "trialing", "past_due", "canceled", "unpaid"]);
 
-function json(statusCode, payload) {
-  return {
-    statusCode,
-    headers: JSON_HEADERS,
-    body: JSON.stringify(payload),
-  };
+function normalizeStatus(status) {
+  return ACTIVE_STATUSES.has(status) ? status : "inactive";
 }
 
-function normalizeSubscriptionStatus(status) {
-  const allowed = new Set([
-    "active",
-    "trialing",
-    "past_due",
-    "canceled",
-    "unpaid",
-    "incomplete",
-    "incomplete_expired",
-    "paused",
-  ]);
-
-  if (!status || !allowed.has(status)) {
-    return "inactive";
-  }
-
-  return status;
-}
-
-function scoreStatus(status) {
-  switch (status) {
-    case "active":
-      return 0;
-    case "trialing":
-      return 1;
-    case "past_due":
-      return 2;
-    case "unpaid":
-      return 3;
-    case "incomplete":
-      return 4;
-    case "incomplete_expired":
-      return 5;
-    case "paused":
-      return 6;
-    case "canceled":
-      return 7;
-    default:
-      return 8;
-  }
-}
-
-function pickBestSubscription(subscriptions) {
-  if (!Array.isArray(subscriptions) || subscriptions.length === 0) {
-    return null;
-  }
-
-  const sorted = [...subscriptions].sort((a, b) => {
-    const scoreDiff = scoreStatus(a.status) - scoreStatus(b.status);
-    if (scoreDiff !== 0) {
-      return scoreDiff;
-    }
-    return (b.current_period_end || 0) - (a.current_period_end || 0);
-  });
-
-  return sorted[0];
-}
-
-function toIsoFromUnix(seconds) {
-  if (!seconds) {
-    return null;
-  }
-  return new Date(seconds * 1000).toISOString();
-}
-
-async function findCustomerByIdentity(stripe, { email, userId }) {
-  const list = await stripe.customers.list({ email, limit: 10 });
-  if (!list.data.length) {
-    return null;
-  }
-
-  return (
-    list.data.find((item) => item.metadata && item.metadata.user_id === userId) ||
-    list.data[0] ||
-    null
+async function getEntitlement(client, userId) {
+  const result = await client.query(
+    `
+      SELECT
+        u.email,
+        e.plan,
+        e.status,
+        e.current_period_end
+      FROM users u
+      LEFT JOIN entitlements e ON e.user_id = u.id
+      WHERE u.id = $1::uuid
+      LIMIT 1
+    `,
+    [userId]
   );
+
+  return result.rows[0] || null;
+}
+
+function resolveAuthenticatedUser(event) {
+  const token = getBearerToken(event);
+  const websiteUser = getWebsiteUser(event);
+  if (!token) {
+    return websiteUser;
+  }
+
+  try {
+    return verifyAppToken(event);
+  } catch (err) {
+    if (websiteUser) {
+      return websiteUser;
+    }
+    throw err;
+  }
 }
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "GET") {
-    return json(405, { error: "Method Not Allowed" });
+    return methodNotAllowed();
   }
 
-  const identityUser = event.clientContext && event.clientContext.user;
-  if (!identityUser || !identityUser.email || !identityUser.sub) {
-    return json(401, { error: "Authentication required." });
+  let user;
+  try {
+    user = resolveAuthenticatedUser(event);
+    if (!user) {
+      return json(401, { error: "Authentication required." });
+    }
+  } catch (err) {
+    return json(err.statusCode || 500, { error: err.message || "Authentication failed." });
   }
-
-  if (!process.env.STRIPE_SECRET_KEY) {
-    return json(500, { error: "Server misconfiguration: STRIPE_SECRET_KEY is missing." });
-  }
-
-  const appUrl = process.env.PUBLIC_APP_URL || "/";
 
   try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    const email = String(identityUser.email).toLowerCase();
-    const userId = identityUser.sub;
+    const response = await withClient(async (client) => {
+      await ensureUser(client, user);
+      const row = await getEntitlement(client, user.id);
+      if (!row) {
+        return {
+          email: user.email,
+          plan: null,
+          status: "inactive",
+          current_period_end: null,
+        };
+      }
 
-    const customer = await findCustomerByIdentity(stripe, { email, userId });
-    if (!customer) {
-      return json(200, {
-        email,
-        plan: null,
-        status: "inactive",
-        current_period_end: null,
-        app_url: appUrl,
-      });
-    }
-
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customer.id,
-      status: "all",
-      limit: 20,
+      return {
+        email: row.email || user.email,
+        plan: row.plan || null,
+        status: normalizeStatus(row.status),
+        current_period_end: toIsoString(row.current_period_end),
+      };
     });
 
-    const best = pickBestSubscription(subscriptions.data || []);
-    if (!best) {
-      return json(200, {
-        email,
-        plan: null,
-        status: "inactive",
-        current_period_end: null,
-        app_url: appUrl,
-      });
-    }
-
-    return json(200, {
-      email,
-      plan: "pro",
-      status: normalizeSubscriptionStatus(best.status),
-      current_period_end: toIsoFromUnix(best.current_period_end),
-      app_url: appUrl,
-    });
+    return json(200, response);
   } catch (err) {
     return json(500, {
       error: err && err.message ? err.message : "Unable to fetch subscription status.",

@@ -352,6 +352,7 @@
       const debugMode = params.get("debug") === "1";
 
       let checkoutInFlight = false;
+      let pendingCheckoutAfterLogin = false;
 
       function currentUser() {
         return window.netlifyIdentity && typeof window.netlifyIdentity.currentUser === "function"
@@ -381,6 +382,14 @@
         checkoutBtn.textContent = isBusy ? "Starting checkout..." : "Continue to Checkout";
       }
 
+      function openIdentityAuth() {
+        if (!window.netlifyIdentity || typeof window.netlifyIdentity.open !== "function") {
+          return false;
+        }
+        window.netlifyIdentity.open("signup");
+        return true;
+      }
+
       function syncUserUI() {
         const user = currentUser();
         if (user) {
@@ -405,6 +414,17 @@
         }
 
         const user = currentUser();
+        if (!user) {
+          pendingCheckoutAfterLogin = true;
+          if (openIdentityAuth()) {
+            setStatus("Please sign in to continue.");
+            return;
+          }
+
+          setStatus("Sign-in is unavailable right now. Please try again later.");
+          return;
+        }
+
         setErrorVisible(false);
         setCheckoutBusy(true);
         setStatus("Creating Stripe Checkout session...");
@@ -425,6 +445,15 @@
           });
 
           const payload = await response.json().catch(function () { return {}; });
+          if (response.status === 401) {
+            setCheckoutBusy(false);
+            pendingCheckoutAfterLogin = true;
+            if (openIdentityAuth()) {
+              setStatus("Please sign in to continue.");
+              return;
+            }
+          }
+
           if (!response.ok || !payload.url) {
             throw new Error(payload && payload.error ? payload.error : "Checkout unavailable");
           }
@@ -483,7 +512,8 @@
           window.netlifyIdentity.close();
           setSignedInLine(user);
           syncUserUI();
-          if (shouldAutostart) {
+          if (shouldAutostart || pendingCheckoutAfterLogin) {
+            pendingCheckoutAfterLogin = false;
             startCheckout();
           }
         });
@@ -495,6 +525,7 @@
       }
 
       if (shouldAutostart) {
+        pendingCheckoutAfterLogin = true;
         startCheckout();
       }
     })();
