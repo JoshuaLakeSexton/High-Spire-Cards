@@ -1,16 +1,36 @@
 const Stripe = require("stripe");
-const { requireWebsiteUser } = require("./_lib/auth");
+const { getWebsiteUser, verifyAppToken } = require("./_lib/auth");
 const { withClient, getStripeCustomerForUser } = require("./_lib/db");
 const { json, methodNotAllowed, normalizeBaseUrl } = require("./_lib/http");
+
+function resolveAuthenticatedUser(event) {
+  const websiteUser = getWebsiteUser(event);
+
+  try {
+    const appUser = verifyAppToken(event);
+    if (appUser) {
+      return appUser;
+    }
+  } catch (err) {
+    if (!websiteUser) {
+      throw err;
+    }
+  }
+
+  return websiteUser;
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return methodNotAllowed();
   }
 
-  let websiteUser;
+  let user;
   try {
-    websiteUser = requireWebsiteUser(event);
+    user = resolveAuthenticatedUser(event);
+    if (!user) {
+      return json(401, { error: "Authentication required." });
+    }
   } catch (err) {
     return json(err.statusCode || 500, { error: err.message || "Authentication required." });
   }
@@ -25,7 +45,7 @@ exports.handler = async (event) => {
 
   try {
     const stripeCustomerId = await withClient((client) =>
-      getStripeCustomerForUser(client, websiteUser.id)
+      getStripeCustomerForUser(client, user.id)
     );
 
     if (!stripeCustomerId) {

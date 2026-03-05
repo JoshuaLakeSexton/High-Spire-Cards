@@ -238,7 +238,6 @@
       <div class="ctaRow">
         <a id="enterAppBtn" class="btn" href="/" hidden>Enter App</a>
         <button id="manageBillingBtn" class="btn secondary" type="button" hidden>Manage Billing</button>
-        <button id="signinBtn" class="btn secondary" type="button" hidden>Sign In / Create Account</button>
       </div>
 
       <div id="debugRow" class="debugRow" hidden>
@@ -255,19 +254,25 @@
       const signedInLine = document.getElementById("signedInLine");
       const enterAppBtn = document.getElementById("enterAppBtn");
       const manageBillingBtn = document.getElementById("manageBillingBtn");
-      const signinBtn = document.getElementById("signinBtn");
       const debugRow = document.getElementById("debugRow");
       const debugOutput = document.getElementById("debugOutput");
       const checkAccessBtn = document.getElementById("checkAccessBtn");
 
       const POLL_INTERVAL_MS = 2000;
       const POLL_TIMEOUT_MS = 20000;
+      const APP_TOKEN_STORAGE_KEY = "high_spire_app_token";
       const params = new URLSearchParams(window.location.search);
       const debugMode = params.get("debug") === "1";
+      const sessionId = String(params.get("session_id") || "").trim();
       const fallbackAppUrl = "/";
+      let appToken = window.localStorage.getItem(APP_TOKEN_STORAGE_KEY) || "";
+      let appUrl = appToken ? (fallbackAppUrl + "?token=" + encodeURIComponent(appToken)) : fallbackAppUrl;
+      let pollInFlight = false;
 
       function currentUser() {
-        return window.netlifyIdentity ? window.netlifyIdentity.currentUser() : null;
+        return window.netlifyIdentity && typeof window.netlifyIdentity.currentUser === "function"
+          ? window.netlifyIdentity.currentUser()
+          : null;
       }
 
       function isUnlockedStatus(status) {
@@ -289,17 +294,11 @@
         return user.jwt(true);
       }
 
-      async function fetchMe() {
-        const user = currentUser();
-        if (!user) {
-          return { status: "unauthenticated" };
-        }
-
-        const token = await getIdentityToken(user);
+      async function fetchMeWithToken(token) {
         const response = await fetch("/.netlify/functions/me", {
           method: "GET",
           headers: {
-            Authorization: token ? "Bearer " + token : "",
+            Authorization: "Bearer " + token,
           },
         });
 
@@ -311,84 +310,119 @@
         return payload;
       }
 
-      async function mintAppLink() {
+      async function mintAppAccess() {
         const user = currentUser();
-        if (!user) {
-          return fallbackAppUrl;
+        const identityToken = await getIdentityToken(user);
+        const headers = { "Content-Type": "application/json" };
+        const body = {};
+
+        if (identityToken) {
+          headers.Authorization = "Bearer " + identityToken;
+        } else if (sessionId) {
+          body.session_id = sessionId;
+        } else {
+          throw new Error("Missing session context for app access.");
         }
 
-        const token = await getIdentityToken(user);
         const response = await fetch("/.netlify/functions/mint-app-token", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token ? "Bearer " + token : "",
-          },
-          body: "{}",
+          headers: headers,
+          body: JSON.stringify(body),
         });
 
         const payload = await response.json().catch(function () { return {}; });
-        if (!response.ok || !payload.app_url) {
+        if (!response.ok || !payload.token) {
           throw new Error(payload && payload.error ? payload.error : "Unable to mint app access token.");
         }
 
-        return payload.app_url;
+        appToken = payload.token;
+        appUrl = payload.app_url || (fallbackAppUrl + "?token=" + encodeURIComponent(appToken));
+        window.localStorage.setItem(APP_TOKEN_STORAGE_KEY, appToken);
+        return payload;
+      }
+
+      async function fetchMe() {
+        const user = currentUser();
+        const identityToken = await getIdentityToken(user);
+        let tokenForMe = appToken;
+
+        if (!tokenForMe && !identityToken && sessionId) {
+          try {
+            await mintAppAccess();
+            tokenForMe = appToken;
+          } catch (_err) {
+          }
+        }
+
+        if (!tokenForMe && identityToken) {
+          tokenForMe = identityToken;
+        }
+
+        if (!tokenForMe) {
+          throw new Error("Authentication required.");
+        }
+
+        return fetchMeWithToken(tokenForMe);
       }
 
       async function setUnlockedUI(_payload) {
-        let appUrl = fallbackAppUrl;
-        try {
-          appUrl = await mintAppLink();
-        } catch (_err) {
-          statusText.textContent = "Subscription active. App token not ready yet, retrying…";
+        if (!appToken) {
+          try {
+            await mintAppAccess();
+          } catch (_err) {
+          }
         }
+
+        const targetAppUrl = appToken
+          ? (appUrl || (fallbackAppUrl + "?token=" + encodeURIComponent(appToken)))
+          : fallbackAppUrl;
 
         statusText.textContent = "Your trial is active. You can enter the app now.";
         enterAppBtn.hidden = false;
-        enterAppBtn.href = appUrl;
+        enterAppBtn.href = targetAppUrl;
         manageBillingBtn.hidden = false;
-        signinBtn.hidden = true;
       }
 
-      function setWaitingUI() {
-        statusText.textContent = "We're confirming your subscription...";
+      function setWaitingUI(message) {
+        statusText.textContent = message || "We're confirming your subscription...";
         enterAppBtn.hidden = true;
         manageBillingBtn.hidden = true;
-        signinBtn.hidden = true;
-      }
-
-      function setSignedOutUI() {
-        statusText.textContent = "Sign in to confirm your subscription and continue.";
-        enterAppBtn.hidden = true;
-        manageBillingBtn.hidden = true;
-        signinBtn.hidden = false;
       }
 
       async function pollForAccess() {
+        if (pollInFlight) {
+          return;
+        }
+
+        pollInFlight = true;
         const start = Date.now();
         setWaitingUI();
 
-        while (Date.now() - start <= POLL_TIMEOUT_MS) {
-          const payload = await fetchMe();
-          if (isUnlockedStatus(payload.status)) {
-            await setUnlockedUI(payload);
-            return;
-          }
-          await new Promise(function (resolve) { setTimeout(resolve, POLL_INTERVAL_MS); });
-        }
+        try {
+          while (Date.now() - start <= POLL_TIMEOUT_MS) {
+            try {
+              const payload = await fetchMe();
+              if (isUnlockedStatus(payload.status)) {
+                await setUnlockedUI(payload);
+                return;
+              }
+            } catch (_err) {
+            }
 
-        statusText.textContent = "We're confirming your subscription. Please refresh in a moment.";
+            await new Promise(function (resolve) { setTimeout(resolve, POLL_INTERVAL_MS); });
+          }
+
+          statusText.textContent = "We're confirming your subscription. Please refresh in a moment.";
+        } finally {
+          pollInFlight = false;
+        }
       }
 
       async function refreshAccess() {
         const user = currentUser();
         setSignedInLine(user);
 
-        if (!user) {
-          setSignedOutUI();
-          return;
-        }
-
+        setWaitingUI("Checking your subscription status...");
         try {
           const payload = await fetchMe();
           if (isUnlockedStatus(payload.status)) {
@@ -397,24 +431,28 @@
           }
           await pollForAccess();
         } catch (_err) {
-          statusText.textContent = "We couldn't verify your subscription right now. Please try again.";
+          await pollForAccess();
         }
       }
 
       async function handleBillingPortal() {
-        const user = currentUser();
-        if (!user) {
-          setSignedOutUI();
-          return;
-        }
-
         try {
-          const token = await getIdentityToken(user);
+          const user = currentUser();
+          const identityToken = await getIdentityToken(user);
+          if (!appToken && !identityToken && sessionId) {
+            await mintAppAccess();
+          }
+
+          const authToken = appToken || identityToken;
+          if (!authToken) {
+            throw new Error("Authentication required.");
+          }
+
           const response = await fetch("/.netlify/functions/create-portal-session", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: token ? "Bearer " + token : "",
+              Authorization: "Bearer " + authToken,
             },
             body: "{}",
           });
@@ -446,23 +484,22 @@
         debugRow.hidden = false;
       }
 
-      signinBtn.addEventListener("click", function () {
-        window.netlifyIdentity.open("signup");
-      });
-
       manageBillingBtn.addEventListener("click", handleBillingPortal);
       checkAccessBtn.addEventListener("click", checkAccessDebug);
 
-      window.netlifyIdentity.on("init", refreshAccess);
-      window.netlifyIdentity.on("login", function () {
-        window.netlifyIdentity.close();
+      if (window.netlifyIdentity) {
+        window.netlifyIdentity.on("init", refreshAccess);
+        window.netlifyIdentity.on("login", function () {
+          window.netlifyIdentity.close();
+          refreshAccess();
+        });
+        window.netlifyIdentity.on("logout", function () {
+          refreshAccess();
+        });
+        window.netlifyIdentity.init();
+      } else {
         refreshAccess();
-      });
-      window.netlifyIdentity.on("logout", function () {
-        refreshAccess();
-      });
-
-      window.netlifyIdentity.init();
+      }
     })();
   </script>
 </body>

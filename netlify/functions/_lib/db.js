@@ -52,12 +52,52 @@ async function ensureUser(client, user) {
   return result.rows[0];
 }
 
+async function findUserByEmail(client, email) {
+  const result = await client.query(`SELECT id, email FROM users WHERE email = $1 LIMIT 1`, [
+    email.toLowerCase(),
+  ]);
+  return result.rows[0] || null;
+}
+
+async function findOrCreateUserByEmail(client, email) {
+  const existing = await findUserByEmail(client, email);
+  if (existing) {
+    return existing;
+  }
+
+  const result = await client.query(
+    `
+      INSERT INTO users (email)
+      VALUES ($1)
+      ON CONFLICT (email)
+      DO UPDATE SET email = EXCLUDED.email
+      RETURNING id, email
+    `,
+    [email.toLowerCase()]
+  );
+
+  return result.rows[0];
+}
+
+async function getUserById(client, userId) {
+  const result = await client.query(`SELECT id, email FROM users WHERE id = $1::uuid LIMIT 1`, [userId]);
+  return result.rows[0] || null;
+}
+
 async function getStripeCustomerForUser(client, userId) {
   const result = await client.query(
     `SELECT stripe_customer_id FROM stripe_customers WHERE user_id = $1::uuid`,
     [userId]
   );
   return result.rows[0] ? result.rows[0].stripe_customer_id : null;
+}
+
+async function getUserIdByStripeCustomer(client, stripeCustomerId) {
+  const result = await client.query(
+    `SELECT user_id FROM stripe_customers WHERE stripe_customer_id = $1 LIMIT 1`,
+    [stripeCustomerId]
+  );
+  return result.rows[0] ? result.rows[0].user_id : null;
 }
 
 async function upsertStripeCustomer(client, userId, stripeCustomerId) {
@@ -76,6 +116,10 @@ module.exports = {
   getPool,
   withClient,
   ensureUser,
+  findUserByEmail,
+  findOrCreateUserByEmail,
+  getUserById,
   getStripeCustomerForUser,
+  getUserIdByStripeCustomer,
   upsertStripeCustomer,
 };

@@ -1,12 +1,17 @@
 const Stripe = require("stripe");
-const { requireWebsiteUser } = require("./_lib/auth");
+const { getWebsiteUser } = require("./_lib/auth");
 const {
   withClient,
   ensureUser,
+  findOrCreateUserByEmail,
   getStripeCustomerForUser,
   upsertStripeCustomer,
 } = require("./_lib/db");
 const { json, methodNotAllowed, normalizeBaseUrl, parseJsonBody } = require("./_lib/http");
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
 async function findOrCreateCustomer(stripe, user) {
   const existing = await withClient(async (client) => {
@@ -36,16 +41,15 @@ exports.handler = async (event) => {
     return methodNotAllowed();
   }
 
-  let websiteUser;
-  try {
-    websiteUser = requireWebsiteUser(event);
-  } catch (err) {
-    return json(err.statusCode || 500, { error: err.message || "Authentication required." });
-  }
-
   const body = parseJsonBody(event);
   if (body === null) {
     return json(400, { error: "Invalid JSON body." });
+  }
+
+  const websiteUser = getWebsiteUser(event);
+  const guestEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  if (!websiteUser && (!guestEmail || !isValidEmail(guestEmail))) {
+    return json(401, { error: "Authentication required. Sign in or provide a valid email." });
   }
 
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -69,7 +73,14 @@ exports.handler = async (event) => {
 
   try {
     const stripe = new Stripe(secretKey);
-    const stripeCustomerId = await findOrCreateCustomer(stripe, websiteUser);
+    const user = websiteUser
+      ? websiteUser
+      : await withClient((client) => findOrCreateUserByEmail(client, guestEmail));
+    const normalizedUser = {
+      id: String(user.id),
+      email: String(user.email).toLowerCase(),
+    };
+    const stripeCustomerId = await findOrCreateCustomer(stripe, normalizedUser);
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -78,9 +89,9 @@ exports.handler = async (event) => {
       payment_method_collection: "always",
       success_url: `${siteUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/trial`,
-      metadata: { user_id: websiteUser.id },
+      metadata: { user_id: normalizedUser.id },
       subscription_data: {
-        metadata: { user_id: websiteUser.id },
+        metadata: { user_id: normalizedUser.id },
         ...(useTrial ? { trial_period_days: trialDays } : {}),
       },
     });

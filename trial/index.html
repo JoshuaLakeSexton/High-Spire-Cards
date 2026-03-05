@@ -6,7 +6,7 @@
   <title>Start Your Free Trial — High Spire</title>
   <meta
     name="description"
-    content="Sign in and continue to Stripe Checkout to start your High Spire free trial."
+    content="Start your High Spire free trial and continue to Stripe Checkout."
   />
 
   <link rel="preload" href="/assets/SortsMillGoudy-Regular.ttf" as="font" type="font/ttf" crossorigin>
@@ -58,7 +58,7 @@
           rgba(255,255,255,0.70) 56%,
           rgba(255,255,255,0.42) 100%
         ),
-        url("/assets/trial-background.svg") center / cover no-repeat fixed;
+        url("/assets/trial-page-background.svg") center / cover no-repeat fixed;
       overscroll-behavior: none;
     }
 
@@ -189,6 +189,36 @@
       opacity: 0.78;
     }
 
+    .emailWrap{
+      margin: 0 auto 18px;
+      width: min(460px, 100%);
+      text-align: left;
+    }
+
+    .emailLabel{
+      display: block;
+      margin: 0 0 6px;
+      font-size: 17px;
+      opacity: 0.9;
+    }
+
+    .emailInput{
+      width: 100%;
+      font-family: inherit;
+      font-size: 18px;
+      line-height: 1.2;
+      border: 1px solid var(--border);
+      border-radius: 0;
+      background: rgba(255,255,255,0.88);
+      color: inherit;
+      padding: 11px 12px;
+    }
+
+    .emailInput:focus-visible{
+      outline: 2px solid rgba(0, 0, 0, 0.85);
+      outline-offset: 2px;
+    }
+
     .planTile{
       margin: 0 auto 20px;
       width: min(560px, 100%);
@@ -316,6 +346,10 @@
       <h1>Start Your Free Trial</h1>
       <p class="subtitle"></p>
       <p id="signedInLine" class="signedIn" aria-live="polite"></p>
+      <div class="emailWrap">
+        <label class="emailLabel" for="emailInput">Email</label>
+        <input id="emailInput" class="emailInput" type="email" autocomplete="email" placeholder="you@example.com">
+      </div>
 
       <section class="planTile" aria-label="Plan details">
         <p class="planName">Pro Plan</p>
@@ -342,6 +376,7 @@
       const checkoutBtn = document.getElementById("checkoutBtn");
       const statusEl = document.getElementById("status");
       const signedInLine = document.getElementById("signedInLine");
+      const emailInput = document.getElementById("emailInput");
       const checkoutError = document.getElementById("checkoutError");
       const debugRow = document.getElementById("debugRow");
       const debugOutput = document.getElementById("debugOutput");
@@ -350,14 +385,22 @@
       const params = new URLSearchParams(window.location.search);
       const shouldAutostart = params.get("autostart") === "1";
       const debugMode = params.get("debug") === "1";
+      const APP_TOKEN_STORAGE_KEY = "high_spire_app_token";
 
       let checkoutInFlight = false;
-      let pendingCheckoutAfterLogin = false;
 
       function currentUser() {
         return window.netlifyIdentity && typeof window.netlifyIdentity.currentUser === "function"
           ? window.netlifyIdentity.currentUser()
           : null;
+      }
+
+      function isValidEmail(value) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value || "");
+      }
+
+      function getInputEmail() {
+        return String(emailInput.value || "").trim().toLowerCase();
       }
 
       function setStatus(message) {
@@ -382,23 +425,20 @@
         checkoutBtn.textContent = isBusy ? "Starting checkout..." : "Continue to Checkout";
       }
 
-      function openIdentityAuth() {
-        if (!window.netlifyIdentity || typeof window.netlifyIdentity.open !== "function") {
-          return false;
-        }
-        window.netlifyIdentity.open("signup");
-        return true;
-      }
-
       function syncUserUI() {
         const user = currentUser();
         if (user) {
-          signedInLine.textContent = "Signed in as " + user.email;
+          setSignedInLine(user);
+          if (user.email) {
+            emailInput.value = user.email;
+          }
+          emailInput.readOnly = true;
           setStatus("Signed in. Continue to Stripe Checkout when ready.");
           return;
         }
-        signedInLine.textContent = "";
-        setStatus("");
+        setSignedInLine(null);
+        emailInput.readOnly = false;
+        setStatus("Enter your email to continue.");
       }
 
       async function getIdentityToken(user) {
@@ -413,15 +453,12 @@
           return;
         }
 
+        const typedEmail = getInputEmail();
         const user = currentUser();
-        if (!user) {
-          pendingCheckoutAfterLogin = true;
-          if (openIdentityAuth()) {
-            setStatus("Please sign in to continue.");
-            return;
-          }
-
-          setStatus("Sign-in is unavailable right now. Please try again later.");
+        const email = user && user.email ? String(user.email).toLowerCase() : typedEmail;
+        if (!isValidEmail(email)) {
+          setStatus("Enter a valid email to continue.");
+          setErrorVisible(true);
           return;
         }
 
@@ -431,10 +468,7 @@
 
         try {
           const token = await getIdentityToken(user);
-          const body = { trial: true };
-          if (user && user.email) {
-            body.email = user.email;
-          }
+          const body = { trial: true, email: email };
           const response = await fetch("/.netlify/functions/create-checkout-session", {
             method: "POST",
             headers: {
@@ -445,15 +479,6 @@
           });
 
           const payload = await response.json().catch(function () { return {}; });
-          if (response.status === 401) {
-            setCheckoutBusy(false);
-            pendingCheckoutAfterLogin = true;
-            if (openIdentityAuth()) {
-              setStatus("Please sign in to continue.");
-              return;
-            }
-          }
-
           if (!response.ok || !payload.url) {
             throw new Error(payload && payload.error ? payload.error : "Checkout unavailable");
           }
@@ -468,18 +493,20 @@
       }
 
       async function checkAccessDebug() {
-        const user = currentUser();
-        if (!user) {
-          debugOutput.textContent = "Not signed in.";
-          return;
-        }
-
         try {
+          const user = currentUser();
           const token = await getIdentityToken(user);
+          const appToken = window.localStorage.getItem(APP_TOKEN_STORAGE_KEY);
+          const accessToken = appToken || token;
+          if (!accessToken) {
+            debugOutput.textContent = "No access token yet.";
+            return;
+          }
+
           const response = await fetch("/.netlify/functions/me", {
             method: "GET",
             headers: {
-              Authorization: token ? "Bearer " + token : "",
+              Authorization: "Bearer " + accessToken,
             },
           });
           const payload = await response.json().catch(function () { return {}; });
@@ -502,6 +529,13 @@
       if (checkAccessBtn) {
         checkAccessBtn.addEventListener("click", checkAccessDebug);
       }
+      if (emailInput) {
+        emailInput.addEventListener("input", function () {
+          if (checkoutError.classList.contains("show")) {
+            setErrorVisible(false);
+          }
+        });
+      }
 
       syncUserUI();
       checkoutBtn.disabled = false;
@@ -512,8 +546,7 @@
           window.netlifyIdentity.close();
           setSignedInLine(user);
           syncUserUI();
-          if (shouldAutostart || pendingCheckoutAfterLogin) {
-            pendingCheckoutAfterLogin = false;
+          if (shouldAutostart) {
             startCheckout();
           }
         });
@@ -525,7 +558,6 @@
       }
 
       if (shouldAutostart) {
-        pendingCheckoutAfterLogin = true;
         startCheckout();
       }
     })();
