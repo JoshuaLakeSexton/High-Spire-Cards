@@ -62,9 +62,11 @@ function verifyAppToken(event) {
     return null;
   }
 
-  const secret = process.env.APP_JWT_SECRET;
+  const secret = process.env.APP_JWT_SECRET || process.env.STRIPE_SECRET_KEY;
   if (!secret) {
-    const err = new Error("Server misconfiguration: APP_JWT_SECRET is missing.");
+    const err = new Error(
+      "Server misconfiguration: APP_JWT_SECRET (or STRIPE_SECRET_KEY fallback) is missing."
+    );
     err.statusCode = 500;
     throw err;
   }

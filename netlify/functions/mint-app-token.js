@@ -43,6 +43,62 @@ function normalizeUserRecord(row) {
   };
 }
 
+function normalizeSubscriptionStatus(status) {
+  switch (status) {
+    case "active":
+    case "trialing":
+    case "past_due":
+    case "canceled":
+    case "unpaid":
+      return status;
+    default:
+      return "inactive";
+  }
+}
+
+function toTimestamp(seconds) {
+  if (!seconds) {
+    return null;
+  }
+  return new Date(seconds * 1000);
+}
+
+async function upsertEntitlement(client, userId, subscription) {
+  await client.query(
+    `
+      INSERT INTO entitlements (
+        user_id,
+        plan,
+        status,
+        current_period_end,
+        stripe_subscription_id,
+        updated_at
+      )
+      VALUES (
+        $1::uuid,
+        'pro',
+        $2,
+        $3,
+        $4,
+        now()
+      )
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        plan = EXCLUDED.plan,
+        status = EXCLUDED.status,
+        current_period_end = EXCLUDED.current_period_end,
+        stripe_subscription_id = EXCLUDED.stripe_subscription_id,
+        updated_at = now()
+    `,
+    [
+      userId,
+      normalizeSubscriptionStatus(subscription.status),
+      toTimestamp(subscription.current_period_end),
+      subscription.id,
+    ]
+  );
+}
+
 async function resolveUserFromSession(sessionId, stripe) {
   const session = await stripe.checkout.sessions.retrieve(sessionId, {
     expand: ["customer"],
@@ -113,7 +169,25 @@ async function resolveUserFromSession(sessionId, stripe) {
     return normalizeUserRecord(row);
   });
 
-  return user;
+  return { user, session };
+}
+
+async function syncEntitlementFromSession(stripe, userId, session) {
+  const subscriptionId =
+    typeof session.subscription === "string"
+      ? session.subscription
+      : session.subscription && session.subscription.id
+        ? session.subscription.id
+        : "";
+
+  if (!subscriptionId) {
+    return;
+  }
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  await withClient(async (client) => {
+    await upsertEntitlement(client, userId, subscription);
+  });
 }
 
 exports.handler = async (event) => {
@@ -127,11 +201,13 @@ exports.handler = async (event) => {
   }
 
   const websiteUser = getWebsiteUser(event);
-  const appJwtSecret = process.env.APP_JWT_SECRET;
+  const appJwtSecret = process.env.APP_JWT_SECRET || process.env.STRIPE_SECRET_KEY;
   const appUrl = normalizeBaseUrl(process.env.PUBLIC_APP_URL, "https://app.base44.com");
   const stripeSecret = process.env.STRIPE_SECRET_KEY;
   if (!appJwtSecret) {
-    return json(500, { error: "Server misconfiguration: APP_JWT_SECRET is missing." });
+    return json(500, {
+      error: "Server misconfiguration: APP_JWT_SECRET (or STRIPE_SECRET_KEY fallback) is missing.",
+    });
   }
 
   const sessionId = typeof body.session_id === "string" ? body.session_id.trim() : "";
@@ -146,10 +222,14 @@ exports.handler = async (event) => {
   }
 
   try {
+    let session = null;
     let user = websiteUser;
     if (!user) {
       const stripe = new Stripe(stripeSecret);
-      user = await resolveUserFromSession(sessionId, stripe);
+      const resolved = await resolveUserFromSession(sessionId, stripe);
+      user = resolved.user;
+      session = resolved.session;
+      await syncEntitlementFromSession(stripe, user.id, session);
     }
 
     await withClient(async (client) => {

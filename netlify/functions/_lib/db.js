@@ -15,9 +15,14 @@ function getPool() {
     return pool;
   }
 
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString =
+    process.env.DATABASE_URL ||
+    process.env.NETLIFY_DATABASE_URL ||
+    process.env.NETLIFY_DATABASE_URL_UNPOOLED;
   if (!connectionString) {
-    throw new Error("Server misconfiguration: DATABASE_URL is missing.");
+    throw new Error(
+      "Server misconfiguration: DATABASE_URL (or NETLIFY_DATABASE_URL) is missing."
+    );
   }
 
   pool = new Pool({
