@@ -318,7 +318,7 @@
         Start with a free trial.
       </p>
       <div class="cta-row">
-  <a href="/trial" class="btn btn-primary">Free Trial</a>
+  <a href="/pricing?autostart=1" class="btn btn-primary">Free Trial</a>
   <a href="/learn-more" class="btn btn-secondary">Learn More</a>
 </div>
     </section>
@@ -389,66 +389,6 @@
   <script>
     // Footer year
     document.getElementById("year").textContent = new Date().getFullYear();
-
-    // Stripe Checkout
-    async function startCheckout() {
-      const btn = document.getElementById("freeTrialBtn");
-      btn.disabled = true;
-      btn.textContent = "Loading...";
-
-      try {
-        const res = await fetch("/.netlify/functions/create-checkout-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({})
-        });
-
-        const data = await res.json().catch(() => ({}));
-
-        if (!res.ok || !data.url) {
-          alert(data?.error || "Checkout isn't set up yet. Check Netlify env vars.");
-          return;
-        }
-
-        window.location.href = data.url;
-      } catch (e) {
-        alert("Checkout error: " + (e?.message || "Unknown error"));
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Free Trial";
-      }
-    }
-
-    document.getElementById("freeTrialBtn").addEventListener("click", startCheckout);
-
-    // Music toggle
-    const audio = document.getElementById("siteAudio");
-    const toggle = document.getElementById("musicToggle");
-
-    function setMusicState(isPlaying){
-      toggle.textContent = isPlaying ? "Pause" : "Play";
-      toggle.setAttribute("aria-pressed", String(isPlaying));
-      toggle.title = isPlaying ? "Pause music" : "Play music";
-    }
-
-    setMusicState(false);
-
-    toggle.addEventListener("click", async () => {
-      try {
-        if (audio.paused) {
-          await audio.play();
-          setMusicState(true);
-        } else {
-          audio.pause();
-          setMusicState(false);
-        }
-      } catch (e) {
-        console.error(e);
-        alert("Audio couldn’t play. Click Play again (browser autoplay rules).");
-      }
-    });
-
-    audio.addEventListener("ended", () => setMusicState(false));
   </script>
 
   <!-- anchor target for Enter (kept simple) -->

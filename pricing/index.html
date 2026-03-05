@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>High Spire Pricing</title>
+  <meta name="description" content="Start your High Spire free trial." />
+  <style>
+    :root {
+      --bg: #f4ecdd;
+      --ink: #2f1b0d;
+      --panel: rgba(255, 251, 242, 0.9);
+      --line: rgba(93, 55, 21, 0.28);
+      --cta: #3a1f10;
+      --ctaText: #fffdf8;
+      --muted: rgba(47, 27, 13, 0.72);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Georgia", "Times New Roman", serif;
+      color: var(--ink);
+      background: radial-gradient(circle at top, rgba(255, 255, 255, 0.65), transparent 45%), var(--bg);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: min(680px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: clamp(20px, 4vw, 36px);
+      display: grid;
+      gap: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4.2vw, 3rem);
+      line-height: 1.02;
+      letter-spacing: 0.01em;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 1.04rem;
+    }
+
+    .price-box {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.62);
+      padding: 14px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .price {
+      margin: 0;
+      font-size: 2.05rem;
+      line-height: 1;
+    }
+
+    .price-meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button,
+    a.btn {
+      border: 1px solid rgba(58, 31, 16, 0.5);
+      background: rgba(255, 255, 255, 0.74);
+      color: var(--ink);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 180px;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: var(--cta);
+      color: var(--ctaText);
+      border-color: var(--cta);
+    }
+
+    button:disabled {
+      opacity: 0.66;
+      cursor: not-allowed;
+    }
+
+    #status {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--muted);
+      min-height: 1.4em;
+    }
+
+    #status.error {
+      color: #8d1f1f;
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 0.92rem;
+    }
+
+    .links a {
+      color: var(--ink);
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Start Your Free Trial</h1>
+    <p class="sub">Sign in, then continue to Stripe Checkout to start your trial subscription.</p>
+
+    <section class="price-box" aria-label="Plan details">
+      <p class="price">Pro Plan</p>
+      <p class="price-meta">3-day free trial, then billed by Stripe.</p>
+    </section>
+
+    <p id="status" aria-live="polite">Checking sign-in status...</p>
+
+    <div class="actions">
+      <button id="authBtn" type="button">Sign In / Create Account</button>
+      <button id="checkoutBtn" class="primary" type="button" disabled>Continue to Checkout</button>
+    </div>
+
+    <div class="links">
+      <a href="/">Back to home</a>
+      <a href="/learn-more">Learn more</a>
+    </div>
+  </main>
+
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script>
+    (function () {
+      const statusEl = document.getElementById("status");
+      const authBtn = document.getElementById("authBtn");
+      const checkoutBtn = document.getElementById("checkoutBtn");
+      const params = new URLSearchParams(window.location.search);
+      const shouldAutoStart = params.get("autostart") === "1";
+
+      let checkoutInFlight = false;
+      let autoHandled = false;
+
+      function setStatus(message, isError) {
+        statusEl.textContent = message;
+        statusEl.classList.toggle("error", Boolean(isError));
+      }
+
+      function setBusy(busy) {
+        authBtn.disabled = busy;
+        checkoutBtn.disabled = busy || !window.netlifyIdentity?.currentUser();
+        checkoutBtn.textContent = busy ? "Loading..." : "Continue to Checkout";
+      }
+
+      function currentUser() {
+        return window.netlifyIdentity ? window.netlifyIdentity.currentUser() : null;
+      }
+
+      function syncAuthUi() {
+        const user = currentUser();
+        if (user) {
+          authBtn.textContent = "Sign Out";
+          checkoutBtn.disabled = false;
+          setStatus("Signed in. Continue to checkout to start your trial.", false);
+          return;
+        }
+
+        authBtn.textContent = "Sign In / Create Account";
+        checkoutBtn.disabled = true;
+        setStatus("Please sign in to start your free trial.", false);
+      }
+
+      async function startCheckout(user) {
+        if (!user || checkoutInFlight) {
+          return;
+        }
+
+        checkoutInFlight = true;
+        setBusy(true);
+        setStatus("Starting Stripe checkout...", false);
+
+        try {
+          const headers = { "Content-Type": "application/json" };
+
+          if (typeof user.jwt === "function") {
+            const token = await user.jwt(true);
+            if (token) {
+              headers.Authorization = `Bearer ${token}`;
+            }
+          }
+
+          const res = await fetch("/.netlify/functions/create-checkout-session", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({})
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok || !data.url) {
+            throw new Error(data?.error || "Could not create checkout session.");
+          }
+
+          window.location.assign(data.url);
+        } catch (err) {
+          setStatus(err?.message || "Checkout failed. Please try again.", true);
+          setBusy(false);
+          checkoutInFlight = false;
+        }
+      }
+
+      async function handleAutostart() {
+        if (!shouldAutoStart || autoHandled) {
+          return;
+        }
+
+        autoHandled = true;
+        const user = currentUser();
+
+        if (user) {
+          await startCheckout(user);
+          return;
+        }
+
+        setStatus("Sign in to continue your free trial setup.", false);
+        window.netlifyIdentity.open("signup");
+      }
+
+      if (!window.netlifyIdentity) {
+        setStatus("Sign-in service unavailable. Reload or contact support.", true);
+        authBtn.disabled = true;
+        checkoutBtn.disabled = true;
+        return;
+      }
+
+      authBtn.addEventListener("click", async () => {
+        const user = currentUser();
+
+        if (user) {
+          await window.netlifyIdentity.logout();
+          syncAuthUi();
+          return;
+        }
+
+        window.netlifyIdentity.open("signup");
+      });
+
+      checkoutBtn.addEventListener("click", async () => {
+        const user = currentUser();
+
+        if (!user) {
+          setStatus("Please sign in first.", true);
+          window.netlifyIdentity.open("login");
+          return;
+        }
+
+        await startCheckout(user);
+      });
+
+      window.netlifyIdentity.on("init", async () => {
+        syncAuthUi();
+        await handleAutostart();
+      });
+
+      window.netlifyIdentity.on("login", async (user) => {
+        window.netlifyIdentity.close();
+        syncAuthUi();
+
+        if (shouldAutoStart) {
+          await startCheckout(user);
+        }
+      });
+
+      window.netlifyIdentity.on("logout", () => {
+        syncAuthUi();
+      });
+
+      window.netlifyIdentity.init();
+    })();
+  </script>
+</body>
+</html>
