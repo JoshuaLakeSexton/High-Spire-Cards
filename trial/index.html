@@ -128,8 +128,7 @@
     }
 
     .pill:focus-visible,
-    .btn:focus-visible,
-    .subLink:focus-visible {
+    .btn:focus-visible {
       outline: 2px solid rgba(0, 0, 0, 0.85);
       outline-offset: 2px;
     }
@@ -273,27 +272,6 @@
       cursor: not-allowed;
     }
 
-    .linkRow{
-      margin-top: 18px;
-      display:flex;
-      justify-content:center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    .subLink{
-      text-decoration:none;
-      color: inherit;
-      opacity: 0.82;
-      border-bottom: 1px solid rgba(0,0,0,0.22);
-      padding-bottom: 1px;
-      transition: opacity .18s ease, border-color .18s ease;
-    }
-    .subLink:hover{
-      opacity: 1;
-      border-color: rgba(0,0,0,0.42);
-    }
-
     .debugRow{
       margin-top: 16px;
       border-top: 1px solid rgba(0,0,0,0.12);
@@ -330,7 +308,6 @@
     </a>
 
     <nav>
-      <a class="link" href="/pricing">Pricing</a>
       <a class="pill" href="/">Back to home</a>
     </nav>
   </header>
@@ -338,7 +315,7 @@
   <main>
     <section class="panel" aria-label="Free trial checkout">
       <h1>Start Your Free Trial</h1>
-      <p class="subtitle">Sign in, then continue to Stripe Checkout to start your trial subscription.</p>
+      <p class="subtitle">Continue to Stripe Checkout to start your trial subscription.</p>
       <p id="signedInLine" class="signedIn" aria-live="polite"></p>
 
       <section class="planTile" aria-label="Plan details">
@@ -346,17 +323,11 @@
         <p class="planMeta">3-day free trial, then billed monthly.</p>
       </section>
 
-      <p id="status" class="status" aria-live="polite">Checking sign-in status...</p>
+      <p id="status" class="status" aria-live="polite">Preparing checkout...</p>
       <p id="checkoutError" class="error" aria-live="polite">Checkout unavailable. Please try again.</p>
 
       <div class="ctaRow">
         <button id="checkoutBtn" class="btn" type="button" disabled>Continue to Checkout</button>
-        <button id="authBtn" class="btn secondary" type="button">Sign In / Create Account</button>
-      </div>
-
-      <div class="linkRow">
-        <a class="subLink" href="/">Back to home</a>
-        <a class="subLink" href="/pricing">Learn more</a>
       </div>
 
       <div id="debugRow" class="debugRow" hidden>
@@ -369,7 +340,6 @@
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <script>
     (function () {
-      const authBtn = document.getElementById("authBtn");
       const checkoutBtn = document.getElementById("checkoutBtn");
       const statusEl = document.getElementById("status");
       const signedInLine = document.getElementById("signedInLine");
@@ -383,15 +353,11 @@
       const debugMode = params.get("debug") === "1";
 
       let checkoutInFlight = false;
-      let autostartAttempted = false;
-      let identityConfigured = false;
 
       function currentUser() {
-        return window.netlifyIdentity ? window.netlifyIdentity.currentUser() : null;
-      }
-
-      function canUseIdentity() {
-        return Boolean(window.netlifyIdentity && identityConfigured);
+        return window.netlifyIdentity && typeof window.netlifyIdentity.currentUser === "function"
+          ? window.netlifyIdentity.currentUser()
+          : null;
       }
 
       function setStatus(message) {
@@ -413,55 +379,18 @@
       function setCheckoutBusy(isBusy) {
         checkoutInFlight = isBusy;
         checkoutBtn.disabled = isBusy;
-        authBtn.disabled = isBusy;
         checkoutBtn.textContent = isBusy ? "Starting checkout..." : "Continue to Checkout";
       }
 
-      function syncAuthUI() {
+      function syncUserUI() {
         const user = currentUser();
-        setSignedInLine(user);
-
         if (user) {
-          authBtn.textContent = "Sign Out";
-          checkoutBtn.disabled = checkoutInFlight;
+          signedInLine.textContent = "Signed in as " + user.email;
           setStatus("Signed in. Continue to Stripe Checkout when ready.");
           return;
         }
-
-        authBtn.textContent = "Sign In / Create Account";
-        checkoutBtn.disabled = checkoutInFlight;
-
-        if (canUseIdentity()) {
-          setStatus("Please sign in to continue.");
-          return;
-        }
-
-        setStatus("Sign in is unavailable right now. You can continue directly to checkout.");
-      }
-
-      async function detectIdentityBackend() {
-        try {
-          const response = await fetch("/.netlify/identity/settings", {
-            method: "GET",
-            cache: "no-store",
-          });
-          return response.ok;
-        } catch (_err) {
-          return false;
-        }
-      }
-
-      function openIdentityWidget(mode) {
-        if (!window.netlifyIdentity || !canUseIdentity()) {
-          return false;
-        }
-
-        try {
-          window.netlifyIdentity.open(mode || "signup");
-          return true;
-        } catch (_err) {
-          return false;
-        }
+        signedInLine.textContent = "";
+        setStatus("Continue to checkout to start your trial.");
       }
 
       async function getIdentityToken(user) {
@@ -477,13 +406,6 @@
         }
 
         const user = currentUser();
-        if (!user && canUseIdentity()) {
-          setStatus("Please sign in before checkout.");
-          setErrorVisible(false);
-          openIdentityWidget("signup");
-          return;
-        }
-
         setErrorVisible(false);
         setCheckoutBusy(true);
         setStatus("Creating Stripe Checkout session...");
@@ -504,13 +426,6 @@
           });
 
           const payload = await response.json().catch(function () { return {}; });
-          if (response.status === 401 && canUseIdentity()) {
-            setCheckoutBusy(false);
-            setStatus("Please sign in before checkout.");
-            openIdentityWidget("signup");
-            return;
-          }
-
           if (!response.ok || !payload.url) {
             throw new Error(payload && payload.error ? payload.error : "Checkout unavailable");
           }
@@ -551,77 +466,38 @@
         }
       }
 
-      async function attemptAutostart() {
-        if (!shouldAutostart || autostartAttempted) {
-          return;
-        }
-
-        autostartAttempted = true;
-        const user = currentUser();
-
-        if (!user && canUseIdentity()) {
-          setStatus("Sign in to continue your free trial setup.");
-          openIdentityWidget("signup");
-          return;
-        }
-
-        await startCheckout();
-      }
-
       if (debugMode) {
         debugRow.hidden = false;
       }
-
-      authBtn.addEventListener("click", async function () {
-        const user = currentUser();
-
-        if (user) {
-          await window.netlifyIdentity.logout();
-          syncAuthUI();
-          return;
-        }
-
-        if (openIdentityWidget("signup")) {
-          return;
-        }
-
-        setStatus("Sign-in unavailable. Continuing to checkout...");
-        await startCheckout();
-      });
 
       checkoutBtn.addEventListener("click", startCheckout);
       if (checkAccessBtn) {
         checkAccessBtn.addEventListener("click", checkAccessDebug);
       }
 
-      // Render a usable UI immediately even if identity init never resolves.
-      syncAuthUI();
+      syncUserUI();
+      checkoutBtn.disabled = false;
 
-      if (!window.netlifyIdentity) {
-        return;
+      if (window.netlifyIdentity) {
+        window.netlifyIdentity.on("init", syncUserUI);
+        window.netlifyIdentity.on("login", function (user) {
+          window.netlifyIdentity.close();
+          setSignedInLine(user);
+          syncUserUI();
+          if (shouldAutostart) {
+            startCheckout();
+          }
+        });
+        window.netlifyIdentity.on("logout", function () {
+          setErrorVisible(false);
+          syncUserUI();
+        });
+        window.netlifyIdentity.init();
       }
 
-      window.netlifyIdentity.on("init", async function () {
-        identityConfigured = await detectIdentityBackend();
-        syncAuthUI();
-        await attemptAutostart();
-      });
-
-      window.netlifyIdentity.on("login", async function (user) {
-        window.netlifyIdentity.close();
-        setSignedInLine(user);
-        syncAuthUI();
-        if (shouldAutostart) {
-          await startCheckout();
-        }
-      });
-
-      window.netlifyIdentity.on("logout", function () {
-        setErrorVisible(false);
-        syncAuthUI();
-      });
-
-      window.netlifyIdentity.init();
+      if (shouldAutostart) {
+        startCheckout();
+      }
     })();
   </script>
 </body>
