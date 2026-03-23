@@ -2,7 +2,7 @@
 
 ## Auth and access flow
 1. Website auth is Netlify Identity only.
-2. User signs in on `/trial`.
+2. User signs in on `/pricing` or `/trial`.
 3. `POST /.netlify/functions/create-checkout-session` requires authenticated website user.
 4. Stripe Checkout completes and redirects to `/success`.
 5. Stripe webhook (`POST /.netlify/functions/stripe-webhook`) upserts Postgres entitlements.
@@ -13,6 +13,18 @@
 8. Base44 reads token and calls `GET https://www.highspirelearning.com/.netlify/functions/me`.
    - `active` or `trialing` -> unlocked
    - otherwise -> locked/paywall state
+
+## Intro video page
+- New route: `/watch`
+- Reusable video component: `assets/video-block.js`
+- Supports:
+  - local file mode (`videoSrc`)
+  - embed mode (`embedUrl`)
+  - poster-only placeholder mode (`poster`)
+- Update TODO placeholders in `watch/index.html`:
+  - `videoSrc`
+  - `embedUrl`
+  - `poster`
 
 ## Required env vars
 - `DATABASE_URL`
@@ -54,6 +66,17 @@ All functions return CORS headers and support `OPTIONS` for Base44 cross-origin 
 5. Complete checkout (Stripe test card: `4242 4242 4242 4242`).
 6. On `/success`, confirm `Enter App` appears.
 7. Verify `GET /.netlify/functions/me` returns `status: trialing` or `active`.
+
+## Live test flow (production)
+1. Open `/pricing`.
+2. Click `Start Free Trial`:
+   - if logged out, Netlify Identity opens signup/login
+   - if logged in, Checkout session is created
+3. Complete Stripe Checkout (test card `4242 4242 4242 4242`).
+4. Confirm redirect to `/success`.
+5. `/success` polls `/.netlify/functions/me` for up to 20 seconds.
+6. Once status is `active` or `trialing`, click `Enter App`.
+7. Confirm Base44 unlocks after calling `/.netlify/functions/me` with app token.
 
 ## Base44 integration skeleton
 ```js

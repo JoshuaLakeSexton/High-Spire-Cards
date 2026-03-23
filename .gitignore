@@ -1,0 +1,12 @@
+# Local Netlify folder
+.netlify
+
+# Node artifacts
+node_modules
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# Local design drops
+assets/pricing-hs.svg

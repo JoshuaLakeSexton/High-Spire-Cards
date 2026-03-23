@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What Is High Spire? — High Spire</title>
+  <meta
+    name="description"
+    content="Watch a short High Spire introduction to understand the platform, vision, and learning experience."
+  />
+
+  <link rel="preload" href="/assets/SortsMillGoudy-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/assets/SortsMillGoudy-Italic.ttf" as="font" type="font/ttf" crossorigin>
+
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <style>
+    @font-face {
+      font-family: "Sorts Mill Goudy";
+      src: url("/assets/SortsMillGoudy-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "Sorts Mill Goudy";
+      src: url("/assets/SortsMillGoudy-Italic.ttf") format("truetype");
+      font-weight: 400;
+      font-style: italic;
+      font-display: swap;
+    }
+
+    :root {
+      --text: #0a0a0a;
+      --glass: rgba(255, 255, 255, 0.56);
+      --glass-light: rgba(255, 255, 255, 0.7);
+      --border: rgba(0, 0, 0, 0.14);
+      --shadow: 0 22px 70px rgba(0, 0, 0, 0.14);
+      --padX: 40px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      font-family: "Sorts Mill Goudy", serif;
+      color: var(--text);
+      background:
+        linear-gradient(to bottom,
+          rgba(255,255,255,0.98) 0%,
+          rgba(255,255,255,0.94) 22%,
+          rgba(255,255,255,0.78) 52%,
+          rgba(255,255,255,0.62) 100%
+        ),
+        url("/assets/bg.png") center / cover no-repeat fixed;
+      overscroll-behavior: none;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 16px var(--padX);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.82);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand img {
+      height: 34px;
+      width: auto;
+      display: block;
+    }
+
+    .brand span {
+      font-size: 18px;
+      letter-spacing: 0.01em;
+      opacity: 0.9;
+    }
+
+    .navRow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pill {
+      appearance: none;
+      -webkit-appearance: none;
+      font-family: inherit;
+      font-size: 16px;
+      line-height: 1;
+      color: inherit;
+      text-decoration: none;
+      padding: 10px 12px;
+      border-radius: 0;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform .08s ease, background .18s ease;
+    }
+
+    .pill:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.98);
+    }
+
+    main {
+      width: min(1080px, 100%);
+      margin: 0 auto;
+      padding: 46px var(--padX) 70px;
+    }
+
+    .heroCard,
+    .supportCard,
+    .ctaCard {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 34px 32px;
+      border-radius: 0;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .heroCard {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 62px;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+
+    .subhead {
+      margin: 0 auto;
+      max-width: 50ch;
+      font-size: 22px;
+      line-height: 1.5;
+      opacity: 0.9;
+    }
+
+    .videoHost {
+      margin-bottom: 22px;
+    }
+
+    .videoShell {
+      background: var(--glass-light);
+      border: 1px solid var(--border);
+      padding: 22px;
+      border-radius: 0;
+      box-shadow: 0 12px 34px rgba(0,0,0,0.11);
+    }
+
+    .videoTitle {
+      margin: 0 0 8px;
+      font-size: 38px;
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .videoDescription {
+      margin: 0 0 16px;
+      text-align: center;
+      font-size: 20px;
+      opacity: 0.86;
+      line-height: 1.45;
+    }
+
+    .videoFrame,
+    .videoPosterOnly {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border: 1px solid rgba(0,0,0,0.2);
+      background: rgba(240,240,240,0.55);
+      display: block;
+      border-radius: 0;
+    }
+
+    .videoPosterOnly {
+      position: relative;
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 20px;
+    }
+
+    .videoPosterBadge {
+      align-self: flex-start;
+      padding: 8px 12px;
+      font-size: 20px;
+      border: 1px solid rgba(0,0,0,0.25);
+      background: rgba(255,255,255,0.8);
+    }
+
+    .videoPosterHelp {
+      margin: 10px 0 0;
+      font-size: 18px;
+      max-width: 46ch;
+      line-height: 1.4;
+      background: rgba(255,255,255,0.72);
+      padding: 8px 10px;
+      border: 1px solid rgba(0,0,0,0.15);
+    }
+
+    .supportCard {
+      margin-bottom: 22px;
+    }
+
+    .supportGrid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .supportBlock {
+      border: 1px solid rgba(0,0,0,0.16);
+      background: rgba(255,255,255,0.74);
+      padding: 16px;
+      min-height: 170px;
+    }
+
+    .supportBlock h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.15;
+    }
+
+    .supportBlock p {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.45;
+      opacity: 0.9;
+    }
+
+    .ctaCard {
+      text-align: center;
+    }
+
+    .ctaRow {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 20px;
+      padding: 12px 18px;
+      border-radius: 0;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.94);
+      color: inherit;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 180px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.10);
+      transition: transform .08s ease, background .18s ease;
+      cursor: pointer;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn.secondary {
+      background: rgba(255,255,255,0.66);
+      box-shadow: none;
+    }
+
+    .btn:focus-visible,
+    .pill:focus-visible,
+    a:focus-visible {
+      outline: 2px solid rgba(0, 0, 0, 0.85);
+      outline-offset: 2px;
+    }
+
+    .statusLine {
+      margin: 14px 0 0;
+      font-size: 18px;
+      min-height: 1.2em;
+      opacity: 0.85;
+    }
+
+    @media (max-width: 980px) {
+      .supportGrid {
+        grid-template-columns: 1fr;
+      }
+      .supportBlock {
+        min-height: 0;
+      }
+    }
+
+    @media (max-width: 720px) {
+      :root { --padX: 18px; }
+      header { padding: 14px var(--padX); }
+      .brand span { display: none; }
+      h1 { font-size: 44px; }
+      .subhead { font-size: 18px; }
+      .heroCard,
+      .supportCard,
+      .ctaCard { padding: 26px 18px; }
+      .videoTitle { font-size: 30px; }
+      .videoDescription,
+      .supportBlock p,
+      .statusLine { font-size: 17px; }
+      .supportBlock h2 { font-size: 24px; }
+      .btn { min-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/" aria-label="High Spire Home">
+      <img src="/assets/logo.png" alt="High Spire">
+      <span>High Spire</span>
+    </a>
+
+    <div class="navRow">
+      <a class="pill" href="/pricing">View Pricing</a>
+      <a class="pill" href="/trial">Start Trial</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="heroCard" aria-label="High Spire introduction">
+      <h1>What is High Spire?</h1>
+      <p class="subhead">
+        Watch a short introduction to understand the platform, the vision, and the learning experience.
+      </p>
+    </section>
+
+    <section class="videoHost" aria-label="Introduction video">
+      <div id="videoMount"></div>
+    </section>
+
+    <section class="supportCard" aria-label="About High Spire">
+      <div class="supportGrid">
+        <article class="supportBlock">
+          <h2>What High Spire Is</h2>
+          <p>
+            A learning platform centered on memory, wisdom, great books, and the ideas that shaped civilization.
+          </p>
+        </article>
+        <article class="supportBlock">
+          <h2>Who It Is For</h2>
+          <p>
+            Families, teens, and lifelong learners who want depth, rigor, and genuine intellectual formation.
+          </p>
+        </article>
+        <article class="supportBlock">
+          <h2>Why It Matters</h2>
+          <p>
+            It builds stronger memory, clearer thought, and lasting understanding of Western intellectual tradition.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="ctaCard" aria-label="Next steps">
+      <div class="ctaRow">
+        <a class="btn" href="/trial?autostart=1">Start Free Trial</a>
+        <a class="btn secondary" href="/pricing">View Pricing</a>
+        <a id="enterAppBtn" class="btn secondary" href="/success">Enter the App</a>
+      </div>
+      <p id="statusLine" class="statusLine" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/video-block.js"></script>
+  <script>
+    (function () {
+      var statusLine = document.getElementById('statusLine');
+      var enterAppBtn = document.getElementById('enterAppBtn');
+      var videoMount = document.getElementById('videoMount');
+
+      if (window.HighSpireVideo && videoMount) {
+        window.HighSpireVideo.renderVideoBlock(videoMount, {
+          title: 'See High Spire',
+          description: 'A short introduction to the learning experience.',
+          // TODO: replace with final High Spire intro video (MP4 source)
+          videoSrc: '',
+          // TODO: replace with final YouTube/Vimeo embed URL (if using embed mode)
+          embedUrl: '',
+          // TODO: replace poster thumbnail
+          poster: '/assets/high-spire-pricing-background.svg',
+          videoType: 'video/mp4'
+        });
+      }
+
+      function currentUser() {
+        return window.netlifyIdentity && typeof window.netlifyIdentity.currentUser === 'function'
+          ? window.netlifyIdentity.currentUser()
+          : null;
+      }
+
+      function setStatus(text) {
+        statusLine.textContent = text || '';
+      }
+
+      function updateAuthUI() {
+        var user = currentUser();
+        if (!user || !user.email) {
+          setStatus('Sign in after trial to unlock app access.');
+          enterAppBtn.setAttribute('href', '/success');
+          return;
+        }
+
+        setStatus('Signed in as ' + user.email + '. Enter the app from success after checkout.');
+      }
+
+      if (window.netlifyIdentity) {
+        window.netlifyIdentity.on('init', updateAuthUI);
+        window.netlifyIdentity.on('login', function () {
+          window.netlifyIdentity.close();
+          updateAuthUI();
+        });
+        window.netlifyIdentity.on('logout', updateAuthUI);
+        window.netlifyIdentity.init();
+      }
+
+      updateAuthUI();
+    })();
+  </script>
+</body>
+</html>
