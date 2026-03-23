@@ -1,63 +1,16 @@
 const Stripe = require("stripe");
-const crypto = require("crypto");
-const { getWebsiteUser } = require("./_lib/auth");
-const {
-  withClient,
-  isDatabaseConnectivityError,
-  ensureUser,
-  findOrCreateUserByEmail,
-  getStripeCustomerForUser,
-  upsertStripeCustomer,
-} = require("./_lib/db");
-const { json, methodNotAllowed, normalizeBaseUrl, parseJsonBody } = require("./_lib/http");
+const { requireWebsiteUser } = require("./_lib/auth");
+const { withClient, ensureUser, getStripeCustomerForUser, upsertStripeCustomer } = require("./_lib/db");
+const { json, methodNotAllowed, normalizeBaseUrl, optionsResponse, parseJsonBody } = require("./_lib/http");
 
-function isValidEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-function deriveUserIdFromEmail(email) {
-  const hex = crypto.createHash("sha256").update(String(email).toLowerCase()).digest("hex");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
-}
-
-async function findStripeCustomerByEmail(stripe, email) {
-  const result = await stripe.customers.list({
-    email: email.toLowerCase(),
-    limit: 1,
+async function getOrCreateStripeCustomer(stripe, user) {
+  const existing = await withClient(async (client) => {
+    await ensureUser(client, user);
+    return getStripeCustomerForUser(client, user.id);
   });
-  return result.data[0] || null;
-}
-
-async function findOrCreateCustomer(stripe, user) {
-  let existing = null;
-  try {
-    existing = await withClient(async (client) => {
-      await ensureUser(client, user);
-      return getStripeCustomerForUser(client, user.id);
-    });
-  } catch (err) {
-    if (!isDatabaseConnectivityError(err)) {
-      throw err;
-    }
-  }
 
   if (existing) {
     return existing;
-  }
-
-  const existingStripeCustomer = await findStripeCustomerByEmail(stripe, user.email);
-  if (existingStripeCustomer) {
-    try {
-      await withClient(async (client) => {
-        await ensureUser(client, user);
-        await upsertStripeCustomer(client, user.id, existingStripeCustomer.id);
-      });
-    } catch (err) {
-      if (!isDatabaseConnectivityError(err)) {
-        throw err;
-      }
-    }
-    return existingStripeCustomer.id;
   }
 
   const customer = await stripe.customers.create({
@@ -65,21 +18,19 @@ async function findOrCreateCustomer(stripe, user) {
     metadata: { user_id: user.id },
   });
 
-  try {
-    await withClient(async (client) => {
-      await ensureUser(client, user);
-      await upsertStripeCustomer(client, user.id, customer.id);
-    });
-  } catch (err) {
-    if (!isDatabaseConnectivityError(err)) {
-      throw err;
-    }
-  }
+  await withClient(async (client) => {
+    await ensureUser(client, user);
+    await upsertStripeCustomer(client, user.id, customer.id);
+  });
 
   return customer.id;
 }
 
 exports.handler = async (event) => {
+  if (event.httpMethod === "OPTIONS") {
+    return optionsResponse();
+  }
+
   if (event.httpMethod !== "POST") {
     return methodNotAllowed();
   }
@@ -89,10 +40,11 @@ exports.handler = async (event) => {
     return json(400, { error: "Invalid JSON body." });
   }
 
-  const websiteUser = getWebsiteUser(event);
-  const guestEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  if (!websiteUser && (!guestEmail || !isValidEmail(guestEmail))) {
-    return json(401, { error: "Authentication required. Sign in or provide a valid email." });
+  let user;
+  try {
+    user = requireWebsiteUser(event);
+  } catch (err) {
+    return json(err.statusCode || 401, { error: err.message || "Authentication required." });
   }
 
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -109,35 +61,19 @@ exports.handler = async (event) => {
     return json(400, { error: "Requested price does not match configured plan." });
   }
 
-  const siteUrl = normalizeBaseUrl(process.env.PUBLIC_SITE_URL, "https://highspirelearning.com");
+  const siteUrl = normalizeBaseUrl(process.env.PUBLIC_SITE_URL, "https://www.highspirelearning.com");
   const useTrial = body.trial !== false;
   const trialDaysRaw = Number.parseInt(process.env.STRIPE_TRIAL_DAYS || "3", 10);
   const trialDays = Number.isFinite(trialDaysRaw) && trialDaysRaw > 0 ? trialDaysRaw : 3;
 
   try {
     const stripe = new Stripe(secretKey);
-    let user;
-    if (websiteUser) {
-      user = websiteUser;
-    } else {
-      try {
-        user = await withClient((client) => findOrCreateUserByEmail(client, guestEmail));
-      } catch (err) {
-        if (!isDatabaseConnectivityError(err)) {
-          throw err;
-        }
-        user = {
-          id: deriveUserIdFromEmail(guestEmail),
-          email: guestEmail.toLowerCase(),
-        };
-      }
-    }
-
     const normalizedUser = {
-      id: String(user.id || deriveUserIdFromEmail(user.email)),
+      id: String(user.id),
       email: String(user.email).toLowerCase(),
     };
-    const stripeCustomerId = await findOrCreateCustomer(stripe, normalizedUser);
+
+    const stripeCustomerId = await getOrCreateStripeCustomer(stripe, normalizedUser);
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",

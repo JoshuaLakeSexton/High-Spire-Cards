@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS stripe_customers (
 
 CREATE TABLE IF NOT EXISTS entitlements (
   user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  email text,
   plan text NOT NULL DEFAULT 'pro',
   status text NOT NULL DEFAULT 'inactive',
   current_period_end timestamptz,

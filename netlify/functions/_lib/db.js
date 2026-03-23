@@ -1,15 +1,6 @@
 const { Pool } = require("pg");
 
 let pool;
-const DB_ERROR_PATTERNS = [
-  "database_url",
-  "password authentication failed",
-  "connect",
-  "connection terminated",
-  "econnrefused",
-  "timeout",
-  "no pg_hba.conf entry",
-];
 
 function shouldUseSsl(connectionString) {
   if (!connectionString) {
@@ -24,14 +15,9 @@ function getPool() {
     return pool;
   }
 
-  const connectionString =
-    process.env.DATABASE_URL ||
-    process.env.NETLIFY_DATABASE_URL ||
-    process.env.NETLIFY_DATABASE_URL_UNPOOLED;
+  const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error(
-      "Server misconfiguration: DATABASE_URL (or NETLIFY_DATABASE_URL) is missing."
-    );
+    throw new Error("Server misconfiguration: DATABASE_URL is missing.");
   }
 
   pool = new Pool({
@@ -40,11 +26,6 @@ function getPool() {
   });
 
   return pool;
-}
-
-function isDatabaseConnectivityError(err) {
-  const message = err && err.message ? String(err.message).toLowerCase() : "";
-  return DB_ERROR_PATTERNS.some((pattern) => message.includes(pattern));
 }
 
 async function withClient(callback) {
@@ -133,7 +114,6 @@ async function upsertStripeCustomer(client, userId, stripeCustomerId) {
 
 module.exports = {
   getPool,
-  isDatabaseConnectivityError,
   withClient,
   ensureUser,
   findUserByEmail,

@@ -1,105 +1,95 @@
-# High Spire Website + Subscription Gating
+# High Spire Website + Base44 Access
 
-## Subscription gating: how it works
-1. Website user signs in (Netlify Identity) and clicks `Continue to Checkout` on `/trial`.
-2. `POST /.netlify/functions/create-checkout-session`:
-   - requires website auth
-   - ensures `users` row exists
-   - ensures Stripe customer mapping exists in `stripe_customers`
-   - creates Stripe Checkout subscription session
-3. Stripe sends webhook events to `POST /.netlify/functions/stripe-webhook`.
-4. Webhook verifies signature and upserts `entitlements` (`plan`, `status`, `current_period_end`, `stripe_subscription_id`).
-5. Website calls `POST /.netlify/functions/mint-app-token` to mint a short-lived app JWT.
-6. Base44 app sends that JWT to `GET /.netlify/functions/me`.
-7. Access is granted only when status is `active` or `trialing`.
+## Auth and access flow
+1. Website auth is Netlify Identity only.
+2. User signs in on `/trial`.
+3. `POST /.netlify/functions/create-checkout-session` requires authenticated website user.
+4. Stripe Checkout completes and redirects to `/success`.
+5. Stripe webhook (`POST /.netlify/functions/stripe-webhook`) upserts Postgres entitlements.
+6. `/success` calls `GET /.netlify/functions/me` with the Identity JWT:
+   - `active` or `trialing` -> show `Enter App`
+   - anything else -> poll for up to 20 seconds
+7. Clicking `Enter App` calls `POST /.netlify/functions/mint-app-token` and redirects to `PUBLIC_APP_URL?token=...`.
+8. Base44 reads token and calls `GET https://www.highspirelearning.com/.netlify/functions/me`.
+   - `active` or `trialing` -> unlocked
+   - otherwise -> locked/paywall state
 
-## Required environment variables
+## Required env vars
 - `DATABASE_URL`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRICE_ID_PRO`
 - `APP_JWT_SECRET`
-- `PUBLIC_SITE_URL` (for example `https://highspirelearning.com`)
-- `PUBLIC_APP_URL` (Base44 app URL)
+- `PUBLIC_SITE_URL=https://www.highspirelearning.com`
+- `PUBLIC_APP_URL=<BASE44_APP_URL>`
 - optional: `STRIPE_PORTAL_RETURN_URL`
 - optional: `STRIPE_TRIAL_DAYS` (default `3`)
 
-## Database migration
-Run:
+## Database migrations
+- `db/migrations/001_subscription_gating.sql`
+- `db/migrations/002_entitlements_email.sql`
 
-```sql
--- file: db/migrations/001_subscription_gating.sql
-```
+Tables:
+- `users(id, email, created_at)`
+- `stripe_customers(user_id, stripe_customer_id)`
+- `entitlements(user_id, email, plan, status, current_period_end, stripe_subscription_id, updated_at)`
+- `stripe_event_logs(event_id, event_type, created_at)` for webhook idempotency
 
-This creates:
-- `users`
-- `stripe_customers`
-- `entitlements`
-- `stripe_event_logs` (idempotency guard for webhook replay safety)
-
-## Functions
+## Netlify functions
 - `POST /.netlify/functions/create-checkout-session`
 - `POST /.netlify/functions/stripe-webhook`
 - `GET /.netlify/functions/me`
 - `POST /.netlify/functions/mint-app-token`
 - `POST /.netlify/functions/create-portal-session`
 
-## Local testing guide
-1. Start local dev server with env vars loaded (Netlify dev recommended):
+All functions return CORS headers and support `OPTIONS` for Base44 cross-origin calls.
+
+## Local test flow
+1. Run site locally:
    - `npx netlify dev`
 2. Forward Stripe webhooks:
    - `stripe listen --forward-to http://localhost:8888/.netlify/functions/stripe-webhook`
-3. Copy the webhook signing secret from Stripe CLI output into `STRIPE_WEBHOOK_SECRET`.
-4. Run trial flow in browser:
-   - sign in on `/trial`
-   - click checkout
-   - use Stripe test card `4242 4242 4242 4242`
-5. Verify DB updates:
-   - `stripe_customers` has mapping for the signed-in user
-   - `entitlements.status` becomes `trialing` or `active`
-6. Verify app unlock:
-   - call `POST /.netlify/functions/mint-app-token`
-   - open returned `app_url`
-   - Base44 calls `GET /.netlify/functions/me` with `Authorization: Bearer <app_jwt>`
-7. Simulate cancellation:
-   - cancel subscription in Stripe test dashboard
-   - trigger/update webhook events
-   - verify `entitlements.status` changes to `canceled` and app relocks
+3. Set webhook secret from Stripe CLI output into `STRIPE_WEBHOOK_SECRET`.
+4. Visit `/trial`, sign in with Netlify Identity, click `Continue to Checkout`.
+5. Complete checkout (Stripe test card: `4242 4242 4242 4242`).
+6. On `/success`, confirm `Enter App` appears.
+7. Verify `GET /.netlify/functions/me` returns `status: trialing` or `active`.
 
-## Base44 integration snippet
+## Base44 integration skeleton
 ```js
-const SITE_URL = "https://highspirelearning.com";
+const SITE_URL = "https://www.highspirelearning.com";
 const TOKEN_KEY = "high_spire_app_token";
 
 function readToken() {
   const params = new URLSearchParams(window.location.search);
-  const tokenFromUrl = params.get("token");
-  if (tokenFromUrl) {
-    localStorage.setItem(TOKEN_KEY, tokenFromUrl);
-    return tokenFromUrl;
+  const fromUrl = params.get("token");
+  if (fromUrl) {
+    sessionStorage.setItem(TOKEN_KEY, fromUrl);
+    params.delete("token");
+    history.replaceState({}, "", `${location.pathname}?${params.toString()}`.replace(/\?$/, ""));
+    return fromUrl;
   }
-  return localStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
-async function loadAccess() {
+async function getAccess() {
   const token = readToken();
-  if (!token) {
-    return { locked: true, reason: "no_token" };
-  }
+  if (!token) return { unlocked: false, status: "inactive" };
 
   const res = await fetch(`${SITE_URL}/.netlify/functions/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-
-  if (!res.ok) {
-    return { locked: true, reason: "auth_failed" };
-  }
-
-  const data = await res.json();
-  const unlocked = data.status === "active" || data.status === "trialing";
-  return { locked: !unlocked, data };
+  if (!res.ok) return { unlocked: false, status: "inactive" };
+  const me = await res.json();
+  const unlocked = me.status === "active" || me.status === "trialing";
+  return { unlocked, status: me.status, email: me.email, plan: me.plan };
 }
 ```
 
-## Important setup note
-You must enable website auth (Netlify Identity) for purchase flow + user linking. Without website auth, users cannot be reliably mapped to entitlements.
+Locked screen behavior in Base44:
+- Message: `Subscription required to access High Spire.`
+- `Start Free Trial` button -> `https://www.highspirelearning.com/trial`
+- `Manage Billing` button:
+  - call `POST https://www.highspirelearning.com/.netlify/functions/create-portal-session`
+  - header: `Authorization: Bearer <app_token>`
+  - redirect to returned `url`

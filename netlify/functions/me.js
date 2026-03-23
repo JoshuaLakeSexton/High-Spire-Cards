@@ -1,21 +1,11 @@
-const Stripe = require("stripe");
 const { getBearerToken, getWebsiteUser, verifyAppToken } = require("./_lib/auth");
-const { withClient, isDatabaseConnectivityError, ensureUser } = require("./_lib/db");
-const { json, methodNotAllowed, toIsoString } = require("./_lib/http");
+const { withClient, ensureUser } = require("./_lib/db");
+const { json, methodNotAllowed, optionsResponse, toIsoString } = require("./_lib/http");
 
-const ACTIVE_STATUSES = new Set(["active", "trialing", "past_due", "canceled", "unpaid"]);
+const KNOWN_STATUSES = new Set(["active", "trialing", "past_due", "canceled", "unpaid"]);
 
 function normalizeStatus(status) {
-  return ACTIVE_STATUSES.has(status) ? status : "inactive";
-}
-
-function formatEntitlement(email, plan, status, periodEnd) {
-  return {
-    email,
-    plan: plan || null,
-    status: normalizeStatus(status),
-    current_period_end: toIsoString(periodEnd),
-  };
+  return KNOWN_STATUSES.has(status) ? status : "inactive";
 }
 
 async function getEntitlement(client, userId) {
@@ -38,66 +28,32 @@ async function getEntitlement(client, userId) {
 }
 
 function resolveAuthenticatedUser(event) {
-  const token = getBearerToken(event);
   const websiteUser = getWebsiteUser(event);
-  if (!token) {
+  const bearer = getBearerToken(event);
+
+  if (!bearer) {
     return websiteUser;
   }
 
   try {
-    return verifyAppToken(event);
+    const appUser = verifyAppToken(event);
+    if (appUser) {
+      return appUser;
+    }
   } catch (err) {
-    if (websiteUser) {
-      return websiteUser;
-    }
-    throw err;
-  }
-}
-
-async function getStripeEntitlementByEmail(email) {
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
-  if (!stripeKey) {
-    return formatEntitlement(email, null, "inactive", null);
-  }
-
-  const stripe = new Stripe(stripeKey);
-  const customers = await stripe.customers.list({
-    email: email.toLowerCase(),
-    limit: 3,
-  });
-
-  if (!customers.data.length) {
-    return formatEntitlement(email, null, "inactive", null);
-  }
-
-  let latestSubscription = null;
-  for (const customer of customers.data) {
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customer.id,
-      status: "all",
-      limit: 10,
-    });
-
-    for (const subscription of subscriptions.data) {
-      if (!latestSubscription || Number(subscription.created || 0) > Number(latestSubscription.created || 0)) {
-        latestSubscription = subscription;
-      }
+    if (!websiteUser) {
+      throw err;
     }
   }
 
-  if (!latestSubscription) {
-    return formatEntitlement(email, null, "inactive", null);
-  }
-
-  return formatEntitlement(
-    email,
-    "pro",
-    latestSubscription.status,
-    latestSubscription.current_period_end ? new Date(latestSubscription.current_period_end * 1000) : null
-  );
+  return websiteUser;
 }
 
 exports.handler = async (event) => {
+  if (event.httpMethod === "OPTIONS") {
+    return optionsResponse();
+  }
+
   if (event.httpMethod !== "GET") {
     return methodNotAllowed();
   }
@@ -109,36 +65,33 @@ exports.handler = async (event) => {
       return json(401, { error: "Authentication required." });
     }
   } catch (err) {
-    return json(err.statusCode || 500, { error: err.message || "Authentication failed." });
+    return json(err.statusCode || 401, { error: err.message || "Authentication failed." });
   }
 
   try {
     const response = await withClient(async (client) => {
       await ensureUser(client, user);
-      const row = await getEntitlement(client, user.id);
-      if (!row) {
-        return formatEntitlement(user.email, null, "inactive", null);
+      const entitlement = await getEntitlement(client, user.id);
+
+      if (!entitlement) {
+        return {
+          email: user.email,
+          plan: null,
+          status: "inactive",
+          current_period_end: null,
+        };
       }
 
-      return formatEntitlement(row.email || user.email, row.plan, row.status, row.current_period_end);
+      return {
+        email: entitlement.email || user.email,
+        plan: entitlement.plan || null,
+        status: normalizeStatus(entitlement.status),
+        current_period_end: toIsoString(entitlement.current_period_end),
+      };
     });
 
     return json(200, response);
   } catch (err) {
-    if (isDatabaseConnectivityError(err) && user && user.email) {
-      try {
-        const fallback = await getStripeEntitlementByEmail(user.email);
-        return json(200, fallback);
-      } catch (stripeErr) {
-        return json(500, {
-          error:
-            stripeErr && stripeErr.message
-              ? stripeErr.message
-              : "Unable to fetch subscription status.",
-        });
-      }
-    }
-
     return json(500, {
       error: err && err.message ? err.message : "Unable to fetch subscription status.",
     });

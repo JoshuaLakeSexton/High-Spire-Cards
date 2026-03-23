@@ -32,16 +32,6 @@ function getWebsiteUser(event) {
     };
   }
 
-  const headerUserId = getHeader(event, "x-user-id");
-  const headerEmail = getHeader(event, "x-user-email");
-  if (headerUserId && headerEmail) {
-    return {
-      id: String(headerUserId),
-      email: String(headerEmail).toLowerCase(),
-      source: "headers",
-    };
-  }
-
   return null;
 }
 
@@ -62,17 +52,18 @@ function verifyAppToken(event) {
     return null;
   }
 
-  const secret = process.env.APP_JWT_SECRET || process.env.STRIPE_SECRET_KEY;
+  const secret = process.env.APP_JWT_SECRET;
   if (!secret) {
-    const err = new Error(
-      "Server misconfiguration: APP_JWT_SECRET (or STRIPE_SECRET_KEY fallback) is missing."
-    );
+    const err = new Error("Server misconfiguration: APP_JWT_SECRET is missing.");
     err.statusCode = 500;
     throw err;
   }
 
   try {
-    const payload = jwt.verify(token, secret);
+    const payload = jwt.verify(token, secret, {
+      issuer: "high-spire-site",
+      audience: "high-spire-base44-app",
+    });
     if (!payload || !payload.user_id || !payload.email) {
       const err = new Error("Invalid token payload.");
       err.statusCode = 401;

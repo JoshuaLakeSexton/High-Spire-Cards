@@ -1,7 +1,7 @@
 const Stripe = require("stripe");
 const { withClient, ensureUser, upsertStripeCustomer } = require("./_lib/db");
 const { getHeader } = require("./_lib/auth");
-const { json, methodNotAllowed } = require("./_lib/http");
+const { json, methodNotAllowed, optionsResponse } = require("./_lib/http");
 
 const SUPPORTED_SUBSCRIPTION_EVENTS = new Set([
   "customer.subscription.created",
@@ -29,19 +29,26 @@ function toTimestamp(seconds) {
   return new Date(seconds * 1000);
 }
 
-async function getUserIdFromStripeCustomer(client, stripeCustomerId) {
+async function getUserByStripeCustomer(client, stripeCustomerId) {
   const result = await client.query(
-    `SELECT user_id FROM stripe_customers WHERE stripe_customer_id = $1 LIMIT 1`,
+    `
+      SELECT sc.user_id, u.email
+      FROM stripe_customers sc
+      JOIN users u ON u.id = sc.user_id
+      WHERE sc.stripe_customer_id = $1
+      LIMIT 1
+    `,
     [stripeCustomerId]
   );
-  return result.rows[0] ? result.rows[0].user_id : null;
+  return result.rows[0] || null;
 }
 
-async function upsertEntitlement(client, { userId, subscription }) {
+async function upsertEntitlement(client, { userId, email, subscription }) {
   await client.query(
     `
       INSERT INTO entitlements (
         user_id,
+        email,
         plan,
         status,
         current_period_end,
@@ -50,14 +57,16 @@ async function upsertEntitlement(client, { userId, subscription }) {
       )
       VALUES (
         $1::uuid,
-        'pro',
         $2,
+        'pro',
         $3,
         $4,
+        $5,
         now()
       )
       ON CONFLICT (user_id)
       DO UPDATE SET
+        email = EXCLUDED.email,
         plan = EXCLUDED.plan,
         status = EXCLUDED.status,
         current_period_end = EXCLUDED.current_period_end,
@@ -66,6 +75,7 @@ async function upsertEntitlement(client, { userId, subscription }) {
     `,
     [
       userId,
+      email,
       normalizeStatus(subscription.status),
       toTimestamp(subscription.current_period_end),
       subscription.id,
@@ -82,7 +92,8 @@ async function processCheckoutSessionCompleted(client, stripe, session) {
     return;
   }
 
-  await ensureUser(client, { id: userId, email: email.toLowerCase() });
+  const normalizedEmail = email.toLowerCase();
+  await ensureUser(client, { id: userId, email: normalizedEmail });
   await upsertStripeCustomer(client, userId, customerId);
 
   const subscriptionId = typeof session.subscription === "string" ? session.subscription : null;
@@ -91,7 +102,7 @@ async function processCheckoutSessionCompleted(client, stripe, session) {
   }
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-  await upsertEntitlement(client, { userId, subscription });
+  await upsertEntitlement(client, { userId, email: normalizedEmail, subscription });
 }
 
 async function processSubscriptionEvent(client, subscription) {
@@ -100,15 +111,23 @@ async function processSubscriptionEvent(client, subscription) {
     return;
   }
 
-  const userId = await getUserIdFromStripeCustomer(client, stripeCustomerId);
-  if (!userId) {
+  const user = await getUserByStripeCustomer(client, stripeCustomerId);
+  if (!user || !user.user_id || !user.email) {
     return;
   }
 
-  await upsertEntitlement(client, { userId, subscription });
+  await upsertEntitlement(client, {
+    userId: user.user_id,
+    email: user.email,
+    subscription,
+  });
 }
 
 exports.handler = async (event) => {
+  if (event.httpMethod === "OPTIONS") {
+    return optionsResponse();
+  }
+
   if (event.httpMethod !== "POST") {
     return methodNotAllowed();
   }

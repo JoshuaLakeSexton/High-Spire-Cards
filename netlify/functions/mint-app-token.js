@@ -1,284 +1,40 @@
-const Stripe = require("stripe");
-const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
-const { getWebsiteUser } = require("./_lib/auth");
-const {
-  withClient,
-  isDatabaseConnectivityError,
-  ensureUser,
-  getUserById,
-  getUserIdByStripeCustomer,
-  findOrCreateUserByEmail,
-  upsertStripeCustomer,
-} = require("./_lib/db");
-const { json, methodNotAllowed, normalizeBaseUrl, parseJsonBody } = require("./_lib/http");
-
-function getSessionCustomerId(session) {
-  if (!session || !session.customer) {
-    return "";
-  }
-
-  if (typeof session.customer === "string") {
-    return session.customer;
-  }
-
-  return session.customer.id || "";
-}
-
-function getSessionEmail(session) {
-  if (!session) {
-    return "";
-  }
-
-  const directEmail =
-    (session.customer_details && session.customer_details.email) ||
-    session.customer_email ||
-    (session.customer && typeof session.customer === "object" ? session.customer.email : "");
-
-  return typeof directEmail === "string" ? directEmail.trim().toLowerCase() : "";
-}
-
-function normalizeUserRecord(row) {
-  return {
-    id: String(row.id),
-    email: String(row.email).toLowerCase(),
-  };
-}
-
-function deriveUserIdFromEmail(email) {
-  const hex = crypto.createHash("sha256").update(String(email).toLowerCase()).digest("hex");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
-}
-
-function normalizeSubscriptionStatus(status) {
-  switch (status) {
-    case "active":
-    case "trialing":
-    case "past_due":
-    case "canceled":
-    case "unpaid":
-      return status;
-    default:
-      return "inactive";
-  }
-}
-
-function toTimestamp(seconds) {
-  if (!seconds) {
-    return null;
-  }
-  return new Date(seconds * 1000);
-}
-
-async function upsertEntitlement(client, userId, subscription) {
-  await client.query(
-    `
-      INSERT INTO entitlements (
-        user_id,
-        plan,
-        status,
-        current_period_end,
-        stripe_subscription_id,
-        updated_at
-      )
-      VALUES (
-        $1::uuid,
-        'pro',
-        $2,
-        $3,
-        $4,
-        now()
-      )
-      ON CONFLICT (user_id)
-      DO UPDATE SET
-        plan = EXCLUDED.plan,
-        status = EXCLUDED.status,
-        current_period_end = EXCLUDED.current_period_end,
-        stripe_subscription_id = EXCLUDED.stripe_subscription_id,
-        updated_at = now()
-    `,
-    [
-      userId,
-      normalizeSubscriptionStatus(subscription.status),
-      toTimestamp(subscription.current_period_end),
-      subscription.id,
-    ]
-  );
-}
-
-async function resolveUserFromSession(sessionId, stripe) {
-  const session = await stripe.checkout.sessions.retrieve(sessionId, {
-    expand: ["customer"],
-  });
-
-  if (!session) {
-    const err = new Error("Stripe checkout session not found.");
-    err.statusCode = 404;
-    throw err;
-  }
-
-  if (session.mode !== "subscription") {
-    const err = new Error("Checkout session is not a subscription session.");
-    err.statusCode = 400;
-    throw err;
-  }
-
-  if (session.status !== "complete") {
-    const err = new Error("Checkout session is not complete yet.");
-    err.statusCode = 409;
-    throw err;
-  }
-
-  const metadataUserId =
-    session.metadata && typeof session.metadata.user_id === "string"
-      ? session.metadata.user_id.trim()
-      : "";
-  const customerId = getSessionCustomerId(session);
-  const email = getSessionEmail(session);
-
-  try {
-    const user = await withClient(async (client) => {
-      let row = null;
-
-      if (metadataUserId) {
-        row = await getUserById(client, metadataUserId);
-        if (!row) {
-          if (!email) {
-            const err = new Error("Unable to resolve checkout user email.");
-            err.statusCode = 400;
-            throw err;
-          }
-          row = await ensureUser(client, { id: metadataUserId, email });
-        } else if (email && row.email.toLowerCase() !== email) {
-          row = await ensureUser(client, { id: row.id, email });
-        }
-      }
-
-      if (!row && customerId) {
-        const mappedUserId = await getUserIdByStripeCustomer(client, customerId);
-        if (mappedUserId) {
-          row = await getUserById(client, mappedUserId);
-        }
-      }
-
-      if (!row) {
-        if (!email) {
-          const err = new Error("Unable to resolve user for checkout session.");
-          err.statusCode = 400;
-          throw err;
-        }
-        row = await findOrCreateUserByEmail(client, email);
-      }
-
-      if (customerId) {
-        await upsertStripeCustomer(client, row.id, customerId);
-      }
-
-      return normalizeUserRecord(row);
-    });
-
-    return { user, session };
-  } catch (err) {
-    if (!isDatabaseConnectivityError(err)) {
-      throw err;
-    }
-
-    if (!email) {
-      const fallbackErr = new Error("Unable to resolve checkout user email.");
-      fallbackErr.statusCode = 400;
-      throw fallbackErr;
-    }
-
-    return {
-      user: {
-        id: metadataUserId || deriveUserIdFromEmail(email),
-        email,
-      },
-      session,
-    };
-  }
-}
-
-async function syncEntitlementFromSession(stripe, userId, session) {
-  const subscriptionId =
-    typeof session.subscription === "string"
-      ? session.subscription
-      : session.subscription && session.subscription.id
-        ? session.subscription.id
-        : "";
-
-  if (!subscriptionId) {
-    return;
-  }
-
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-  try {
-    await withClient(async (client) => {
-      await upsertEntitlement(client, userId, subscription);
-    });
-  } catch (err) {
-    if (!isDatabaseConnectivityError(err)) {
-      throw err;
-    }
-  }
-}
+const { requireWebsiteUser } = require("./_lib/auth");
+const { withClient, ensureUser } = require("./_lib/db");
+const { json, methodNotAllowed, normalizeBaseUrl, optionsResponse } = require("./_lib/http");
 
 exports.handler = async (event) => {
+  if (event.httpMethod === "OPTIONS") {
+    return optionsResponse();
+  }
+
   if (event.httpMethod !== "POST") {
     return methodNotAllowed();
   }
 
-  const body = parseJsonBody(event);
-  if (body === null) {
-    return json(400, { error: "Invalid JSON body." });
+  let user;
+  try {
+    user = requireWebsiteUser(event);
+  } catch (err) {
+    return json(err.statusCode || 401, { error: err.message || "Authentication required." });
   }
 
-  const websiteUser = getWebsiteUser(event);
-  const appJwtSecret = process.env.APP_JWT_SECRET || process.env.STRIPE_SECRET_KEY;
-  const appUrl = normalizeBaseUrl(process.env.PUBLIC_APP_URL, "https://app.base44.com");
-  const stripeSecret = process.env.STRIPE_SECRET_KEY;
+  const appJwtSecret = process.env.APP_JWT_SECRET;
   if (!appJwtSecret) {
-    return json(500, {
-      error: "Server misconfiguration: APP_JWT_SECRET (or STRIPE_SECRET_KEY fallback) is missing.",
-    });
+    return json(500, { error: "Server misconfiguration: APP_JWT_SECRET is missing." });
   }
 
-  const sessionId = typeof body.session_id === "string" ? body.session_id.trim() : "";
-  if (!websiteUser && !sessionId) {
-    return json(401, {
-      error: "Authentication required. Provide a valid session_id or sign in.",
-    });
-  }
-
-  if (!websiteUser && !stripeSecret) {
-    return json(500, { error: "Server misconfiguration: STRIPE_SECRET_KEY is missing." });
-  }
+  const appUrl = normalizeBaseUrl(process.env.PUBLIC_APP_URL, "https://app.base44.com");
 
   try {
-    let session = null;
-    let user = websiteUser;
-    if (!user) {
-      const stripe = new Stripe(stripeSecret);
-      const resolved = await resolveUserFromSession(sessionId, stripe);
-      user = resolved.user;
-      session = resolved.session;
-      await syncEntitlementFromSession(stripe, user.id, session);
-    }
-
-    try {
-      await withClient(async (client) => {
-        await ensureUser(client, user);
-      });
-    } catch (err) {
-      if (!isDatabaseConnectivityError(err)) {
-        throw err;
-      }
-    }
+    await withClient(async (client) => {
+      await ensureUser(client, user);
+    });
 
     const token = jwt.sign(
       {
-        user_id: user.id,
-        email: user.email,
+        user_id: String(user.id),
+        email: String(user.email).toLowerCase(),
       },
       appJwtSecret,
       {
@@ -293,6 +49,8 @@ exports.handler = async (event) => {
       app_url: `${appUrl}?token=${encodeURIComponent(token)}`,
     });
   } catch (err) {
-    return json(err.statusCode || 500, { error: err.message || "Unable to mint app token." });
+    return json(500, {
+      error: err && err.message ? err.message : "Unable to mint app token.",
+    });
   }
 };
