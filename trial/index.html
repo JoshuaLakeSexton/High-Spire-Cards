@@ -552,14 +552,15 @@
         setAuthMessage("Signing in...", false);
 
         try {
+          const loginBody = new URLSearchParams({
+            grant_type: "password",
+            username: email,
+            password: password,
+          });
           const response = await fetch("/.netlify/identity/token", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              grant_type: "password",
-              username: email,
-              password: password,
-            }),
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: loginBody.toString(),
           });
           const payload = await response.json().catch(function () {
             return {};
@@ -567,8 +568,11 @@
 
           if (!response.ok || !payload.access_token) {
             const message =
-              (payload && payload.msg) ||
               (payload && payload.error_description) ||
+              (payload && payload.msg) ||
+              (payload && payload.error === "unsupported_grant_type"
+                ? "Login request format failed. Please refresh and try again."
+                : "") ||
               "Login failed. Verify your email and password.";
             setAuthMessage(message, true);
             return false;
