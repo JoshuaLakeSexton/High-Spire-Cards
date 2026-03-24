@@ -2,15 +2,17 @@
 
 ## Auth and access flow
 1. Website auth is Netlify Identity only.
-2. User signs in on `/pricing` or `/trial`.
-3. `POST /.netlify/functions/create-checkout-session` requires authenticated website user.
+2. User can start checkout from `/pricing` or `/trial`.
+3. `POST /.netlify/functions/create-checkout-session` accepts either:
+   - Netlify Identity user (Bearer token), or
+   - email in body (`{ email, trial }`) for lightweight trial start.
 4. Stripe Checkout completes and redirects to `/success`.
 5. Stripe webhook (`POST /.netlify/functions/stripe-webhook`) upserts Postgres entitlements.
-6. `/success` calls `GET /.netlify/functions/me` with the Identity JWT:
+6. `/success` reads `session_id`, calls `POST /.netlify/functions/mint-app-token` with `{ session_id }`, then polls `GET /.netlify/functions/me` with the returned app token:
    - `active` or `trialing` -> show `Enter App`
    - anything else -> poll for up to 20 seconds
-7. Clicking `Enter App` calls `POST /.netlify/functions/mint-app-token` and redirects to `PUBLIC_APP_URL?token=...`.
-8. Base44 reads token and calls `GET https://www.highspirelearning.com/.netlify/functions/me`.
+7. Clicking `Enter App` redirects to `PUBLIC_APP_URL?token=...`.
+8. Base44 reads token and calls `GET https://highspirelearning.com/.netlify/functions/me`.
    - `active` or `trialing` -> unlocked
    - otherwise -> locked/paywall state
 
@@ -33,7 +35,7 @@
 - `STRIPE_PRICE_ID_PRO`
 - `APP_JWT_SECRET`
 - `PUBLIC_SITE_URL=https://www.highspirelearning.com`
-- `PUBLIC_APP_URL=<BASE44_APP_URL>`
+- `PUBLIC_APP_URL=https://highspire.base44.app`
 - optional: `STRIPE_PORTAL_RETURN_URL`
 - optional: `STRIPE_TRIAL_DAYS` (default `3`)
 
@@ -80,7 +82,7 @@ All functions return CORS headers and support `OPTIONS` for Base44 cross-origin 
 
 ## Base44 integration skeleton
 ```js
-const SITE_URL = "https://www.highspirelearning.com";
+const SITE_URL = "https://highspirelearning.com";
 const TOKEN_KEY = "high_spire_app_token";
 
 function readToken() {
@@ -113,6 +115,6 @@ Locked screen behavior in Base44:
 - Message: `Subscription required to access High Spire.`
 - `Start Free Trial` button -> `https://www.highspirelearning.com/trial`
 - `Manage Billing` button:
-  - call `POST https://www.highspirelearning.com/.netlify/functions/create-portal-session`
+  - call `POST https://highspirelearning.com/.netlify/functions/create-portal-session`
   - header: `Authorization: Bearer <app_token>`
   - redirect to returned `url`
