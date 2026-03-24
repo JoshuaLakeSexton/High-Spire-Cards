@@ -506,11 +506,10 @@
       }
 
       function openIdentity() {
-        if (window.netlifyIdentity && typeof window.netlifyIdentity.open === "function") {
-          window.netlifyIdentity.open("signup");
-          return;
-        }
         setAuthPanelVisible(true);
+        if (authEmail) {
+          authEmail.focus();
+        }
         setStatus("Sign in to continue to checkout.");
         setErrorVisible(false);
       }
