@@ -236,7 +236,7 @@
       <p id="signedInLine" class="signedIn" aria-live="polite"></p>
 
       <div class="ctaRow">
-        <a id="enterAppBtn" class="btn" href="/" hidden>Enter App</a>
+        <button id="enterAppBtn" class="btn" type="button" hidden>Enter App</button>
       </div>
 
       <div id="debugRow" class="debugRow" hidden>
@@ -314,9 +314,8 @@
       function setUnlockedUI() {
         statusText.textContent = "Your trial is active. You can enter the app now.";
         enterAppBtn.hidden = false;
-        if (appUrl) {
-          enterAppBtn.setAttribute("href", appUrl);
-        }
+        enterAppBtn.disabled = false;
+        enterAppBtn.textContent = "Enter App";
       }
 
       function setWaitingUI(message) {
@@ -391,10 +390,37 @@
         }
       }
 
+      async function handleEnterApp() {
+        try {
+          if (!sessionId) {
+            statusText.textContent = "Missing checkout session. Return to trial and try again.";
+            return;
+          }
+
+          enterAppBtn.disabled = true;
+          enterAppBtn.textContent = "Entering...";
+
+          if (!appUrl) {
+            await mintAppAccessFromSession(sessionId);
+          }
+
+          if (!appUrl) {
+            throw new Error("Unable to prepare app access.");
+          }
+
+          window.location.assign(appUrl);
+        } catch (_err) {
+          statusText.textContent = "Unable to enter app right now. Please wait a moment and try again.";
+          enterAppBtn.disabled = false;
+          enterAppBtn.textContent = "Enter App";
+        }
+      }
+
       if (debugMode) {
         debugRow.hidden = false;
       }
 
+      enterAppBtn.addEventListener("click", handleEnterApp);
       checkAccessBtn.addEventListener("click", checkAccessDebug);
       refreshAccess();
     })();
