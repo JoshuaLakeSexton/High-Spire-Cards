@@ -153,9 +153,10 @@ exports.handler = async (event) => {
       }
     );
 
+    const encodedToken = encodeURIComponent(token);
     return json(200, {
       token,
-      app_url: `${appUrl}?token=${encodeURIComponent(token)}`,
+      app_url: `${appUrl}?token=${encodedToken}&access_token=${encodedToken}`,
     });
   } catch (err) {
     return json(500, {
