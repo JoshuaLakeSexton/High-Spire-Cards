@@ -31,6 +31,7 @@
   }
 
   function createVideoPlayer(config) {
+    const wrap = createElement('div', 'videoPlayerWrap');
     const video = createElement('video', 'videoFrame');
     video.controls = true;
     video.preload = 'metadata';
@@ -47,7 +48,34 @@
     }
 
     video.setAttribute('aria-label', config.title || 'High Spire introduction video');
-    return video;
+
+    const control = createElement('button', 'videoCenterControl');
+    control.type = 'button';
+
+    function syncControlState() {
+      const playing = !video.paused && !video.ended;
+      control.textContent = playing ? 'Pause' : 'Play';
+      control.setAttribute('aria-label', playing ? 'Pause video' : 'Play video');
+      control.setAttribute('aria-pressed', playing ? 'true' : 'false');
+    }
+
+    control.addEventListener('click', function () {
+      if (video.paused || video.ended) {
+        video.play().catch(function () {});
+      } else {
+        video.pause();
+      }
+    });
+
+    video.addEventListener('play', syncControlState);
+    video.addEventListener('pause', syncControlState);
+    video.addEventListener('ended', syncControlState);
+    video.addEventListener('loadedmetadata', syncControlState);
+
+    wrap.appendChild(video);
+    wrap.appendChild(control);
+    syncControlState();
+    return wrap;
   }
 
   function createPosterOnly(config) {

@@ -199,6 +199,40 @@
       border-radius: 0;
     }
 
+    .videoPlayerWrap {
+      position: relative;
+    }
+
+    .videoCenterControl {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      min-width: 120px;
+      padding: 12px 18px;
+      border: 1px solid rgba(0,0,0,0.42);
+      border-radius: 2px;
+      background: rgba(255,255,255,0.92);
+      color: var(--ink);
+      font: inherit;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+      z-index: 3;
+    }
+
+    .videoCenterControl:hover {
+      background: rgba(255,255,255,1);
+      border-color: rgba(0,0,0,0.62);
+    }
+
+    .videoCenterControl:focus-visible {
+      outline: 2px solid rgba(0,0,0,0.82);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.72);
+    }
+
     .videoPosterOnly {
       position: relative;
       background-size: cover;
@@ -372,7 +406,7 @@
           title: '',
           description: '',
           // TODO: replace with final High Spire intro video (MP4 source)
-          videoSrc: '',
+          videoSrc: '/assets/high-spire-intro.mp4',
           // TODO: replace with final YouTube/Vimeo embed URL (if using embed mode)
           embedUrl: '',
           // TODO: replace poster thumbnail
