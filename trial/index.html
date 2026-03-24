@@ -384,7 +384,6 @@
       <div class="ctaRow">
         <button id="checkoutBtn" class="btn" type="button">Continue to Checkout</button>
         <button id="authBtn" class="btn secondary" type="button">Sign In / Create Account</button>
-        <a class="btn secondary" href="/watch">What is High Spire?</a>
       </div>
 
       <section id="authPanel" class="authPanel" hidden aria-label="Sign in to High Spire">
@@ -529,7 +528,7 @@
         authBtn.textContent = "Sign In / Create Account";
         checkoutBtn.disabled = false;
         setAuthMessage("", false);
-        setStatus("Click Continue to Checkout to sign in and start your free trial.");
+        setStatus("Enter your email, then click Continue to Checkout to start your free trial.");
       }
 
       async function getIdentityToken(user) {
@@ -628,7 +627,16 @@
             return;
           }
 
-          setAuthMessage("Confirmation email sent. Verify your email, then log in.", false);
+          const loggedIn = await loginWithPassword();
+          if (loggedIn) {
+            setAuthMessage("Account created and signed in.", false);
+            return;
+          }
+
+          setAuthMessage(
+            "Account created. Please log in with your email and password.",
+            false
+          );
         } catch (_err) {
           setAuthMessage("Unable to create account right now.", true);
         } finally {
@@ -643,19 +651,23 @@
         }
 
         const user = currentUser();
-        if (!user) {
+        const emailInput = (authEmail.value || "").trim().toLowerCase();
+        const hasEmailInput = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput);
+        if (!user && !hasEmailInput) {
           pendingCheckoutAfterLogin = true;
           openIdentity();
+          setAuthMessage("Enter your email to continue, or sign in.", true);
           return;
         }
 
         setErrorVisible(false);
         setCheckoutBusy(true);
         setStatus("Creating Stripe Checkout session...");
+        setAuthMessage("", false);
 
         try {
-          const token = await getIdentityToken(user);
-          const body = { trial: true };
+          const token = user ? await getIdentityToken(user) : null;
+          const body = { trial: true, ...(user ? {} : { email: emailInput }) };
           const response = await fetch("/.netlify/functions/create-checkout-session", {
             method: "POST",
             headers: {

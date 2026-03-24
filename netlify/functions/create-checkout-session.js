@@ -1,6 +1,12 @@
 const Stripe = require("stripe");
 const { requireWebsiteUser } = require("./_lib/auth");
-const { withClient, ensureUser, getStripeCustomerForUser, upsertStripeCustomer } = require("./_lib/db");
+const {
+  withClient,
+  ensureUser,
+  findOrCreateUserByEmail,
+  getStripeCustomerForUser,
+  upsertStripeCustomer,
+} = require("./_lib/db");
 const { json, methodNotAllowed, normalizeBaseUrl, optionsResponse, parseJsonBody } = require("./_lib/http");
 
 async function getOrCreateStripeCustomer(stripe, user) {
@@ -26,6 +32,10 @@ async function getOrCreateStripeCustomer(stripe, user) {
   return customer.id;
 }
 
+function isValidEmail(value) {
+  return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {
     return optionsResponse();
@@ -44,7 +54,28 @@ exports.handler = async (event) => {
   try {
     user = requireWebsiteUser(event);
   } catch (err) {
-    return json(err.statusCode || 401, { error: err.message || "Authentication required." });
+    user = null;
+  }
+
+  if (!user) {
+    const emailFromBody = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (!isValidEmail(emailFromBody)) {
+      return json(401, {
+        error: "Authentication required. Sign in or provide a valid email to continue.",
+      });
+    }
+
+    try {
+      const dbUser = await withClient(async (client) => findOrCreateUserByEmail(client, emailFromBody));
+      user = {
+        id: dbUser.id,
+        email: dbUser.email,
+      };
+    } catch (dbErr) {
+      return json(500, {
+        error: dbErr && dbErr.message ? dbErr.message : "Unable to create user record.",
+      });
+    }
   }
 
   const secretKey = process.env.STRIPE_SECRET_KEY;
