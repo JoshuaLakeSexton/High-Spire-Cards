@@ -44,6 +44,10 @@
 
     * { box-sizing: border-box; }
     html, body { min-height: 100%; }
+    ::selection {
+      background: rgba(0,0,0,0.12);
+      color: var(--text);
+    }
 
     body {
       margin: 0;
@@ -125,15 +129,15 @@
     }
 
     main {
-      min-height: calc(100vh - 76px);
+      min-height: calc(100vh - 74px);
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 36px var(--padX) 58px;
+      padding: 28px var(--padX) 50px;
     }
 
     .panel {
-      width: min(820px, 100%);
+      width: min(780px, 100%);
       text-align: center;
       background: var(--glass);
       border: 1px solid var(--border);
@@ -141,22 +145,22 @@
       border-radius: 0;
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      padding: 40px 34px 34px;
+      padding: 34px 34px 30px;
     }
 
     h1 {
-      margin: 0 0 12px;
-      font-size: 64px;
+      margin: 0 0 10px;
+      font-size: 60px;
       line-height: 1;
       letter-spacing: 0.01em;
     }
 
     .subtitle {
-      margin: 0 auto 18px;
-      font-size: 22px;
-      max-width: 52ch;
+      margin: 0 auto 16px;
+      font-size: 32px;
+      max-width: 24ch;
       line-height: 1.45;
-      opacity: 0.9;
+      opacity: 0.84;
     }
 
     .signedIn {
@@ -167,32 +171,47 @@
     }
 
     .plan {
-      margin: 0 auto 20px;
-      width: min(560px, 100%);
+      margin: 0 auto 14px;
+      width: min(540px, 100%);
       border: 1px solid rgba(0,0,0,0.16);
       background: rgba(255,255,255,0.72);
-      padding: 22px 18px;
+      padding: 22px 22px 20px;
       border-radius: 0;
     }
 
     .plan h2 {
       margin: 0 0 8px;
-      font-size: 40px;
+      font-size: 38px;
       line-height: 1.05;
     }
 
-    .plan p {
+    .planDescription {
+      margin: 0 auto 12px;
+      font-size: 20px;
+      line-height: 1.4;
+      opacity: 0.88;
+      max-width: 30ch;
+    }
+
+    .planBullets {
       margin: 0;
-      font-size: 22px;
-      line-height: 1.35;
-      opacity: 0.9;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 4px;
+      font-size: 18px;
+      opacity: 0.82;
+    }
+
+    .planBullets li::before {
+      content: "• ";
     }
 
     .status {
-      margin: 0 0 8px;
+      margin: 0 0 6px;
       min-height: 1.2em;
-      font-size: 18px;
-      opacity: 0.9;
+      font-size: 17px;
+      opacity: 0.78;
     }
 
     .error {
@@ -217,7 +236,7 @@
 
     .btn {
       font-family: inherit;
-      font-size: 20px;
+      font-size: 19px;
       padding: 12px 18px;
       border-radius: 0;
       border: 1px solid var(--border);
@@ -235,9 +254,31 @@
 
     .btn:hover { transform: translateY(-1px); }
 
+    .btn.primary {
+      background: rgba(17,17,17,0.96);
+      border-color: rgba(17,17,17,0.96);
+      color: rgba(255,255,255,0.96);
+      box-shadow: 0 14px 34px rgba(0,0,0,0.20);
+      min-width: 230px;
+    }
+
+    .btn.primary:hover {
+      background: rgba(17,17,17,0.88);
+    }
+
     .btn.secondary {
       background: rgba(255,255,255,0.66);
       box-shadow: none;
+    }
+
+    .btn.tertiary {
+      background: rgba(255,255,255,0.42);
+      border-color: rgba(0,0,0,0.1);
+      color: rgba(0,0,0,0.62);
+      box-shadow: none;
+      min-width: 180px;
+      font-size: 17px;
+      padding: 11px 14px;
     }
 
     .btn:disabled {
@@ -259,10 +300,11 @@
       .brand span { display: none; }
       h1 { font-size: 46px; }
       .subtitle,
-      .plan p,
+      .planDescription,
       .status,
       .error { font-size: 18px; }
       .plan h2 { font-size: 32px; }
+      .planBullets { font-size: 17px; }
       .panel { padding: 32px 20px 28px; }
       .btn { min-width: 100%; }
     }
@@ -284,21 +326,26 @@
   <main>
     <section class="panel" aria-label="Pricing and checkout">
       <h1>Pricing</h1>
-      <p class="subtitle">Begin with a 3-day free trial, then continue on the Pro plan monthly.</p>
+      <p class="subtitle">Begin with a 3-day free trial, then continue with High Spire Pro for $5/month.</p>
       <p id="signedInLine" class="signedIn" aria-live="polite"></p>
 
       <section class="plan" aria-label="Pro plan details">
-        <h2>Pro Plan</h2>
-        <p>3-day free trial, then billed monthly.</p>
+        <h2>High Spire Pro</h2>
+        <p class="planDescription">Full access to the app, library, and learning experience.</p>
+        <ul class="planBullets" aria-label="Plan highlights">
+          <li>3-day free trial</li>
+          <li>$5/month after trial</li>
+          <li>Cancel anytime</li>
+        </ul>
       </section>
 
-      <p id="status" class="status" aria-live="polite">Sign in to begin your trial.</p>
+      <p id="status" class="status" aria-live="polite">Sign in to begin.</p>
       <p id="checkoutError" class="error" aria-live="polite">Checkout unavailable. Please try again.</p>
 
       <div class="ctaRow">
-        <button id="checkoutBtn" class="btn" type="button">Start Free Trial</button>
+        <button id="checkoutBtn" class="btn primary" type="button">Start Free Trial</button>
         <button id="authBtn" class="btn secondary" type="button">Sign In / Create Account</button>
-        <a class="btn secondary" href="/watch">What is High Spire?</a>
+        <a class="btn tertiary" href="/watch">What is High Spire?</a>
       </div>
     </section>
   </main>
@@ -358,14 +405,13 @@
         var user = currentUser();
         if (user) {
           setSignedInLine(user);
-          authBtn.textContent = 'Sign Out';
           setStatus('Signed in. Start free trial when ready.');
           return;
         }
 
         setSignedInLine(null);
         authBtn.textContent = 'Sign In / Create Account';
-        setStatus('Sign in to begin your trial.');
+        setStatus('Sign in to begin.');
       }
 
       async function getIdentityToken(user) {
@@ -424,12 +470,6 @@
       }
 
       authBtn.addEventListener('click', function () {
-        var user = currentUser();
-        if (user && window.netlifyIdentity && typeof window.netlifyIdentity.logout === 'function') {
-          window.netlifyIdentity.logout();
-          return;
-        }
-
         openIdentity();
       });
 
