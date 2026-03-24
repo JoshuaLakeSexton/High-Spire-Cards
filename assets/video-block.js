@@ -61,9 +61,11 @@
     playBadge.textContent = 'Video coming soon';
     container.appendChild(playBadge);
 
-    const helper = createElement('p', 'videoPosterHelp');
-    helper.textContent = config.description || 'The introduction video will be available here shortly.';
-    container.appendChild(helper);
+    if (config.description) {
+      const helper = createElement('p', 'videoPosterHelp');
+      helper.textContent = config.description;
+      container.appendChild(helper);
+    }
 
     return container;
   }
@@ -74,7 +76,10 @@
     }
 
     const config = {
-      title: options && options.title ? String(options.title) : 'See High Spire',
+      title:
+        options && Object.prototype.hasOwnProperty.call(options, 'title')
+          ? String(options.title || '')
+          : '',
       description: options && options.description ? String(options.description) : '',
       videoSrc: sanitizeUrl(options && options.videoSrc),
       videoType: options && options.videoType ? String(options.videoType) : 'video/mp4',
@@ -83,9 +88,11 @@
     };
 
     const shell = createElement('section', 'videoShell');
-    const heading = createElement('h2', 'videoTitle');
-    heading.textContent = config.title;
-    shell.appendChild(heading);
+    if (config.title) {
+      const heading = createElement('h2', 'videoTitle');
+      heading.textContent = config.title;
+      shell.appendChild(heading);
+    }
 
     if (config.description) {
       const text = createElement('p', 'videoDescription');

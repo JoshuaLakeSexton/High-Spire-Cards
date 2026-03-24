@@ -349,60 +349,28 @@
   <main>
     <section class="heroCard" aria-label="High Spire introduction">
       <h1>What is High Spire?</h1>
-      <p class="subhead">
-        Watch a short introduction to understand the platform, the vision, and the learning experience.
-      </p>
     </section>
 
     <section class="videoHost" aria-label="Introduction video">
       <div id="videoMount"></div>
     </section>
 
-    <section class="supportCard" aria-label="About High Spire">
-      <div class="supportGrid">
-        <article class="supportBlock">
-          <h2>What High Spire Is</h2>
-          <p>
-            A learning platform centered on memory, wisdom, great books, and the ideas that shaped civilization.
-          </p>
-        </article>
-        <article class="supportBlock">
-          <h2>Who It Is For</h2>
-          <p>
-            Families, teens, and lifelong learners who want depth, rigor, and genuine intellectual formation.
-          </p>
-        </article>
-        <article class="supportBlock">
-          <h2>Why It Matters</h2>
-          <p>
-            It builds stronger memory, clearer thought, and lasting understanding of Western intellectual tradition.
-          </p>
-        </article>
-      </div>
-    </section>
-
     <section class="ctaCard" aria-label="Next steps">
       <div class="ctaRow">
         <a class="btn" href="/trial?autostart=1">Start Free Trial</a>
-        <a class="btn secondary" href="/pricing">View Pricing</a>
-        <a id="enterAppBtn" class="btn secondary" href="/success">Enter the App</a>
       </div>
-      <p id="statusLine" class="statusLine" aria-live="polite"></p>
     </section>
   </main>
 
-  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <script src="/assets/video-block.js"></script>
   <script>
     (function () {
-      var statusLine = document.getElementById('statusLine');
-      var enterAppBtn = document.getElementById('enterAppBtn');
       var videoMount = document.getElementById('videoMount');
 
       if (window.HighSpireVideo && videoMount) {
         window.HighSpireVideo.renderVideoBlock(videoMount, {
-          title: 'See High Spire',
-          description: 'A short introduction to the learning experience.',
+          title: '',
+          description: '',
           // TODO: replace with final High Spire intro video (MP4 source)
           videoSrc: '',
           // TODO: replace with final YouTube/Vimeo embed URL (if using embed mode)
@@ -412,39 +380,6 @@
           videoType: 'video/mp4'
         });
       }
-
-      function currentUser() {
-        return window.netlifyIdentity && typeof window.netlifyIdentity.currentUser === 'function'
-          ? window.netlifyIdentity.currentUser()
-          : null;
-      }
-
-      function setStatus(text) {
-        statusLine.textContent = text || '';
-      }
-
-      function updateAuthUI() {
-        var user = currentUser();
-        if (!user || !user.email) {
-          setStatus('Sign in after trial to unlock app access.');
-          enterAppBtn.setAttribute('href', '/success');
-          return;
-        }
-
-        setStatus('Signed in as ' + user.email + '. Enter the app from success after checkout.');
-      }
-
-      if (window.netlifyIdentity) {
-        window.netlifyIdentity.on('init', updateAuthUI);
-        window.netlifyIdentity.on('login', function () {
-          window.netlifyIdentity.close();
-          updateAuthUI();
-        });
-        window.netlifyIdentity.on('logout', updateAuthUI);
-        window.netlifyIdentity.init();
-      }
-
-      updateAuthUI();
     })();
   </script>
 </body>
