@@ -327,7 +327,7 @@
       <p id="checkoutError" class="error" aria-live="polite">Checkout unavailable. Please try again.</p>
 
       <div class="ctaRow">
-        <button id="checkoutBtn" class="btn" type="button" disabled>Continue to Checkout</button>
+        <button id="checkoutBtn" class="btn" type="button">Continue to Checkout</button>
         <button id="authBtn" class="btn secondary" type="button">Sign In / Create Account</button>
         <a class="btn secondary" href="/watch">What is High Spire?</a>
       </div>
@@ -407,8 +407,8 @@
         }
         setSignedInLine(null);
         authBtn.textContent = "Sign In / Create Account";
-        checkoutBtn.disabled = true;
-        setStatus("Please sign in to start your free trial.");
+        checkoutBtn.disabled = false;
+        setStatus("Click Continue to Checkout to sign in and start your free trial.");
       }
 
       async function getIdentityToken(user) {
