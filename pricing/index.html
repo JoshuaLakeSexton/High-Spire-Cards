@@ -137,7 +137,7 @@
     }
 
     .panel {
-      width: min(780px, 100%);
+      width: min(720px, 100%);
       text-align: center;
       background: var(--glass);
       border: 1px solid var(--border);
@@ -145,79 +145,34 @@
       border-radius: 0;
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      padding: 34px 34px 30px;
+      padding: 56px 34px 44px;
     }
 
     h1 {
-      margin: 0 0 10px;
-      font-size: 60px;
+      margin: 0;
+      font-size: 74px;
       line-height: 1;
       letter-spacing: 0.01em;
     }
 
     .subtitle {
-      margin: 0 auto 16px;
-      font-size: 32px;
-      max-width: 24ch;
-      line-height: 1.45;
+      margin: 12px auto 0;
+      font-size: 42px;
+      max-width: 18ch;
+      line-height: 1.2;
       opacity: 0.84;
     }
 
-    .signedIn {
-      margin: 0 0 18px;
-      min-height: 1.2em;
-      font-size: 17px;
-      opacity: 0.82;
-    }
-
-    .plan {
-      margin: 0 auto 14px;
-      width: min(540px, 100%);
-      border: 1px solid rgba(0,0,0,0.16);
-      background: rgba(255,255,255,0.72);
-      padding: 22px 22px 20px;
-      border-radius: 0;
-    }
-
-    .plan h2 {
-      margin: 0 0 8px;
-      font-size: 38px;
-      line-height: 1.05;
-    }
-
-    .planDescription {
-      margin: 0 auto 12px;
+    .supporting {
+      margin: 14px 0 0;
       font-size: 20px;
-      line-height: 1.4;
-      opacity: 0.88;
-      max-width: 30ch;
-    }
-
-    .planBullets {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      gap: 4px;
-      font-size: 18px;
-      opacity: 0.82;
-    }
-
-    .planBullets li::before {
-      content: "• ";
-    }
-
-    .status {
-      margin: 0 0 6px;
-      min-height: 1.2em;
-      font-size: 17px;
-      opacity: 0.78;
+      opacity: 0.72;
     }
 
     .error {
-      margin: 0;
+      margin: 10px 0 0;
       min-height: 1.2em;
-      font-size: 17px;
+      font-size: 16px;
       color: var(--error);
       visibility: hidden;
     }
@@ -229,15 +184,13 @@
     .ctaRow {
       display: flex;
       justify-content: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-top: 16px;
+      margin-top: 30px;
     }
 
     .btn {
       font-family: inherit;
-      font-size: 19px;
-      padding: 12px 18px;
+      font-size: 23px;
+      padding: 15px 28px;
       border-radius: 0;
       border: 1px solid var(--border);
       background: rgba(255,255,255,0.94);
@@ -259,26 +212,11 @@
       border-color: rgba(17,17,17,0.96);
       color: rgba(255,255,255,0.96);
       box-shadow: 0 14px 34px rgba(0,0,0,0.20);
-      min-width: 230px;
+      min-width: 320px;
     }
 
     .btn.primary:hover {
       background: rgba(17,17,17,0.88);
-    }
-
-    .btn.secondary {
-      background: rgba(255,255,255,0.66);
-      box-shadow: none;
-    }
-
-    .btn.tertiary {
-      background: rgba(255,255,255,0.42);
-      border-color: rgba(0,0,0,0.1);
-      color: rgba(0,0,0,0.62);
-      box-shadow: none;
-      min-width: 180px;
-      font-size: 17px;
-      padding: 11px 14px;
     }
 
     .btn:disabled {
@@ -298,13 +236,10 @@
       :root { --padX: 18px; }
       header { padding: 14px var(--padX); }
       .brand span { display: none; }
-      h1 { font-size: 46px; }
+      h1 { font-size: 52px; }
       .subtitle,
-      .planDescription,
-      .status,
+      .supporting,
       .error { font-size: 18px; }
-      .plan h2 { font-size: 32px; }
-      .planBullets { font-size: 17px; }
       .panel { padding: 32px 20px 28px; }
       .btn { min-width: 100%; }
     }
@@ -325,28 +260,13 @@
 
   <main>
     <section class="panel" aria-label="Pricing and checkout">
-      <h1>Pricing</h1>
-      <p class="subtitle">Begin with a 3-day free trial, then continue with High Spire Pro for $5/month.</p>
-      <p id="signedInLine" class="signedIn" aria-live="polite"></p>
-
-      <section class="plan" aria-label="Pro plan details">
-        <h2>High Spire Pro</h2>
-        <p class="planDescription">Full access to the app, library, and learning experience.</p>
-        <ul class="planBullets" aria-label="Plan highlights">
-          <li>3-day free trial</li>
-          <li>$5/month after trial</li>
-          <li>Cancel anytime</li>
-        </ul>
-      </section>
-
-      <p id="status" class="status" aria-live="polite">Sign in to begin.</p>
+      <h1>3 days free.</h1>
+      <p class="subtitle">Then $5/month.</p>
+      <p class="supporting">Cancel anytime.</p>
       <p id="checkoutError" class="error" aria-live="polite">Checkout unavailable. Please try again.</p>
 
       <div class="ctaRow">
         <button id="checkoutBtn" class="btn primary" type="button">Start Free Trial</button>
-        <button id="authBtn" class="btn secondary" type="button">Sign In / Create Account</button>
-        <button id="billingBtn" class="btn secondary" type="button">Manage Billing</button>
-        <a class="btn tertiary" href="/watch">What is High Spire?</a>
       </div>
     </section>
   </main>
@@ -354,11 +274,7 @@
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <script>
     (function () {
-      var authBtn = document.getElementById('authBtn');
-      var billingBtn = document.getElementById('billingBtn');
       var checkoutBtn = document.getElementById('checkoutBtn');
-      var statusEl = document.getElementById('status');
-      var signedInLine = document.getElementById('signedInLine');
       var checkoutError = document.getElementById('checkoutError');
       var pendingCheckoutAfterLogin = false;
       var checkoutInFlight = false;
@@ -369,52 +285,23 @@
           : null;
       }
 
-      function setStatus(text) {
-        statusEl.textContent = text;
-      }
-
       function setErrorVisible(show) {
         checkoutError.classList.toggle('show', Boolean(show));
-      }
-
-      function setSignedInLine(user) {
-        if (!user || !user.email) {
-          signedInLine.textContent = '';
-          return;
-        }
-
-        signedInLine.textContent = 'Signed in as ' + user.email;
       }
 
       function setCheckoutBusy(isBusy) {
         checkoutInFlight = isBusy;
         checkoutBtn.disabled = isBusy;
-        authBtn.disabled = isBusy;
-        billingBtn.disabled = isBusy;
         checkoutBtn.textContent = isBusy ? 'Starting checkout...' : 'Start Free Trial';
       }
 
       function openIdentity() {
         if (!window.netlifyIdentity || typeof window.netlifyIdentity.open !== 'function') {
-          setStatus('Sign-in is unavailable right now. Please refresh and try again.');
           setErrorVisible(true);
           return;
         }
 
         window.netlifyIdentity.open('signup');
-      }
-
-      function syncUserUI() {
-        var user = currentUser();
-        if (user) {
-          setSignedInLine(user);
-          setStatus('Signed in. Start free trial when ready.');
-          return;
-        }
-
-        setSignedInLine(null);
-        authBtn.textContent = 'Sign In / Create Account';
-        setStatus('Sign in to begin.');
       }
 
       async function getIdentityToken(user) {
@@ -439,7 +326,6 @@
 
         setErrorVisible(false);
         setCheckoutBusy(true);
-        setStatus('Creating Stripe Checkout session...');
 
         try {
           var token = await getIdentityToken(user);
@@ -466,76 +352,23 @@
 
           window.location.assign(payload.url);
         } catch (_err) {
-          setStatus('Unable to start checkout.');
           setErrorVisible(true);
           setCheckoutBusy(false);
         }
       }
 
-      async function openBillingPortal() {
-        if (checkoutInFlight) {
-          return;
-        }
-
-        var user = currentUser();
-        if (!user) {
-          setStatus('Sign in to manage billing.');
-          setErrorVisible(false);
-          openIdentity();
-          return;
-        }
-
-        setErrorVisible(false);
-        billingBtn.disabled = true;
-        setStatus('Opening billing portal...');
-
-        try {
-          var token = await getIdentityToken(user);
-          var response = await fetch('/.netlify/functions/create-portal-session', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: 'Bearer ' + token } : {}),
-            },
-            body: '{}',
-          });
-
-          var payload = await response.json().catch(function () { return {}; });
-          if (!response.ok || !payload.url) {
-            throw new Error(payload && payload.error ? payload.error : 'Unable to open billing portal.');
-          }
-
-          window.location.assign(payload.url);
-        } catch (_err) {
-          setStatus('Unable to open billing portal.');
-          setErrorVisible(true);
-          billingBtn.disabled = false;
-        }
-      }
-
-      authBtn.addEventListener('click', function () {
-        openIdentity();
-      });
-
       checkoutBtn.addEventListener('click', startCheckout);
-      billingBtn.addEventListener('click', openBillingPortal);
-      syncUserUI();
 
       if (window.netlifyIdentity) {
-        window.netlifyIdentity.on('init', syncUserUI);
+        window.netlifyIdentity.on('init', function () {});
         window.netlifyIdentity.on('login', function (user) {
           window.netlifyIdentity.close();
-          setSignedInLine(user);
-          syncUserUI();
           if (pendingCheckoutAfterLogin) {
             pendingCheckoutAfterLogin = false;
             startCheckout();
           }
         });
-        window.netlifyIdentity.on('logout', function () {
-          setErrorVisible(false);
-          syncUserUI();
-        });
+        window.netlifyIdentity.on('logout', function () { setErrorVisible(false); });
         window.netlifyIdentity.init();
       }
     })();
