@@ -345,6 +345,7 @@
       <div class="ctaRow">
         <button id="checkoutBtn" class="btn primary" type="button">Start Free Trial</button>
         <button id="authBtn" class="btn secondary" type="button">Sign In / Create Account</button>
+        <button id="billingBtn" class="btn secondary" type="button">Manage Billing</button>
         <a class="btn tertiary" href="/watch">What is High Spire?</a>
       </div>
     </section>
@@ -354,6 +355,7 @@
   <script>
     (function () {
       var authBtn = document.getElementById('authBtn');
+      var billingBtn = document.getElementById('billingBtn');
       var checkoutBtn = document.getElementById('checkoutBtn');
       var statusEl = document.getElementById('status');
       var signedInLine = document.getElementById('signedInLine');
@@ -388,6 +390,7 @@
         checkoutInFlight = isBusy;
         checkoutBtn.disabled = isBusy;
         authBtn.disabled = isBusy;
+        billingBtn.disabled = isBusy;
         checkoutBtn.textContent = isBusy ? 'Starting checkout...' : 'Start Free Trial';
       }
 
@@ -469,11 +472,53 @@
         }
       }
 
+      async function openBillingPortal() {
+        if (checkoutInFlight) {
+          return;
+        }
+
+        var user = currentUser();
+        if (!user) {
+          setStatus('Sign in to manage billing.');
+          setErrorVisible(false);
+          openIdentity();
+          return;
+        }
+
+        setErrorVisible(false);
+        billingBtn.disabled = true;
+        setStatus('Opening billing portal...');
+
+        try {
+          var token = await getIdentityToken(user);
+          var response = await fetch('/.netlify/functions/create-portal-session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: 'Bearer ' + token } : {}),
+            },
+            body: '{}',
+          });
+
+          var payload = await response.json().catch(function () { return {}; });
+          if (!response.ok || !payload.url) {
+            throw new Error(payload && payload.error ? payload.error : 'Unable to open billing portal.');
+          }
+
+          window.location.assign(payload.url);
+        } catch (_err) {
+          setStatus('Unable to open billing portal.');
+          setErrorVisible(true);
+          billingBtn.disabled = false;
+        }
+      }
+
       authBtn.addEventListener('click', function () {
         openIdentity();
       });
 
       checkoutBtn.addEventListener('click', startCheckout);
+      billingBtn.addEventListener('click', openBillingPortal);
       syncUserUI();
 
       if (window.netlifyIdentity) {
