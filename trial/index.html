@@ -278,7 +278,7 @@
       text-align: left;
     }
 
-    .authPanel{
+    .emailPanel{
       margin: 14px auto 0;
       width: min(520px, 100%);
       border: 1px solid rgba(0, 0, 0, 0.12);
@@ -287,24 +287,18 @@
       text-align: left;
     }
 
-    .authGrid{
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .authField{
+    .emailField{
       display: flex;
       flex-direction: column;
       gap: 6px;
     }
 
-    .authField label{
+    .emailField label{
       font-size: 15px;
       opacity: 0.8;
     }
 
-    .authField input{
+    .emailField input{
       font-family: inherit;
       font-size: 18px;
       padding: 10px;
@@ -312,24 +306,6 @@
       border-radius: 0;
       background: rgba(255,255,255,0.9);
       color: inherit;
-    }
-
-    .authActions{
-      margin-top: 12px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .authBtn{
-      min-width: 160px;
-    }
-
-    .authMessage{
-      margin: 10px 0 0;
-      min-height: 1.2em;
-      font-size: 16px;
-      opacity: 0.82;
     }
     .debugOut{
       margin: 10px 0 0;
@@ -350,7 +326,6 @@
       .planName{ font-size: 26px; }
       .planMeta, .status{ font-size: 17px; }
       .btn{ min-width: 100%; }
-      .authGrid{ grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -381,84 +356,31 @@
       <p id="status" class="status" aria-live="polite">Preparing checkout...</p>
       <p id="checkoutError" class="error" aria-live="polite">Checkout unavailable. Please try again.</p>
 
-      <div class="ctaRow">
-        <button id="checkoutBtn" class="btn" type="button">Continue to Checkout</button>
-        <button id="authBtn" class="btn secondary" type="button">Sign In / Create Account</button>
-      </div>
-
-      <section id="authPanel" class="authPanel" hidden aria-label="Sign in to High Spire">
-        <div class="authGrid">
-          <div class="authField">
-            <label for="authEmail">Email</label>
-            <input id="authEmail" type="email" autocomplete="email" />
-          </div>
-          <div class="authField">
-            <label for="authPassword">Password</label>
-            <input id="authPassword" type="password" autocomplete="current-password" />
-          </div>
+      <section class="emailPanel" aria-label="Checkout email">
+        <div class="emailField">
+          <label for="checkoutEmail">Email</label>
+          <input id="checkoutEmail" type="email" autocomplete="email" placeholder="you@example.com" />
         </div>
-        <div class="authActions">
-          <button id="authLoginBtn" class="btn authBtn" type="button">Log In</button>
-          <button id="authSignupBtn" class="btn secondary authBtn" type="button">Create Account</button>
-        </div>
-        <p id="authMessage" class="authMessage" aria-live="polite"></p>
       </section>
 
-      <div id="debugRow" class="debugRow" hidden>
-        <button id="checkAccessBtn" class="btn secondary" type="button">Check access</button>
-        <p id="debugOutput" class="debugOut" aria-live="polite"></p>
+      <div class="ctaRow">
+        <button id="checkoutBtn" class="btn" type="button">Continue to Checkout</button>
       </div>
     </section>
   </main>
 
-  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <script>
     (function () {
-      const authBtn = document.getElementById("authBtn");
       const checkoutBtn = document.getElementById("checkoutBtn");
+      const checkoutEmail = document.getElementById("checkoutEmail");
       const statusEl = document.getElementById("status");
-      const signedInLine = document.getElementById("signedInLine");
       const checkoutError = document.getElementById("checkoutError");
-      const authPanel = document.getElementById("authPanel");
-      const authEmail = document.getElementById("authEmail");
-      const authPassword = document.getElementById("authPassword");
-      const authLoginBtn = document.getElementById("authLoginBtn");
-      const authSignupBtn = document.getElementById("authSignupBtn");
-      const authMessage = document.getElementById("authMessage");
-      const debugRow = document.getElementById("debugRow");
-      const debugOutput = document.getElementById("debugOutput");
-      const checkAccessBtn = document.getElementById("checkAccessBtn");
+      const signedInLine = document.getElementById("signedInLine");
 
       const params = new URLSearchParams(window.location.search);
       const shouldAutostart = params.get("autostart") === "1";
-      const debugMode = params.get("debug") === "1";
-      const DIRECT_TOKEN_KEY = "hs_identity_token";
-      const DIRECT_EMAIL_KEY = "hs_identity_email";
-
       let checkoutInFlight = false;
-      let pendingCheckoutAfterLogin = false;
-      let directIdentityToken = sessionStorage.getItem(DIRECT_TOKEN_KEY) || "";
-      let directIdentityEmail = sessionStorage.getItem(DIRECT_EMAIL_KEY) || "";
-
-      function currentUser() {
-        const identityUser =
-          window.netlifyIdentity && typeof window.netlifyIdentity.currentUser === "function"
-            ? window.netlifyIdentity.currentUser()
-            : null;
-        if (identityUser && identityUser.email) {
-          return identityUser;
-        }
-        if (directIdentityToken && directIdentityEmail) {
-          return {
-            email: directIdentityEmail,
-            source: "direct",
-            jwt: function () {
-              return Promise.resolve(directIdentityToken);
-            },
-          };
-        }
-        return null;
-      }
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       function setStatus(message) {
         statusEl.textContent = message;
@@ -468,181 +390,10 @@
         checkoutError.classList.toggle("show", Boolean(visible));
       }
 
-      function setAuthMessage(message, isError) {
-        authMessage.textContent = message || "";
-        authMessage.style.color = isError ? "var(--error)" : "";
-      }
-
-      function setAuthPanelVisible(visible) {
-        authPanel.hidden = !visible;
-      }
-
-      function saveDirectIdentity(token, email) {
-        directIdentityToken = token || "";
-        directIdentityEmail = (email || "").toLowerCase();
-        if (directIdentityToken && directIdentityEmail) {
-          sessionStorage.setItem(DIRECT_TOKEN_KEY, directIdentityToken);
-          sessionStorage.setItem(DIRECT_EMAIL_KEY, directIdentityEmail);
-          return;
-        }
-        sessionStorage.removeItem(DIRECT_TOKEN_KEY);
-        sessionStorage.removeItem(DIRECT_EMAIL_KEY);
-      }
-
-      function setSignedInLine(user) {
-        if (!user || !user.email) {
-          signedInLine.textContent = "";
-          return;
-        }
-        signedInLine.textContent = "Signed in as " + user.email;
-      }
-
       function setCheckoutBusy(isBusy) {
         checkoutInFlight = isBusy;
         checkoutBtn.disabled = isBusy;
-        authBtn.disabled = isBusy;
         checkoutBtn.textContent = isBusy ? "Starting checkout..." : "Continue to Checkout";
-      }
-
-      function openIdentity() {
-        setAuthPanelVisible(true);
-        if (authEmail) {
-          authEmail.focus();
-        }
-        setStatus("Sign in to continue to checkout.");
-        setErrorVisible(false);
-      }
-
-      function syncUserUI() {
-        const user = currentUser();
-        if (user) {
-          setSignedInLine(user);
-          authBtn.textContent = "Sign Out";
-          checkoutBtn.disabled = false;
-          setAuthPanelVisible(false);
-          setAuthMessage("", false);
-          setStatus("Signed in. Continue to Stripe Checkout when ready.");
-          return;
-        }
-        setSignedInLine(null);
-        authBtn.textContent = "Sign In / Create Account";
-        checkoutBtn.disabled = false;
-        setAuthMessage("", false);
-        setStatus("Enter your email, then click Continue to Checkout to start your free trial.");
-      }
-
-      async function getIdentityToken(user) {
-        if (!user || typeof user.jwt !== "function") {
-          return null;
-        }
-        return user.jwt(true);
-      }
-
-      async function loginWithPassword() {
-        const email = (authEmail.value || "").trim().toLowerCase();
-        const password = authPassword.value || "";
-        if (!email || !password) {
-          setAuthMessage("Enter your email and password.", true);
-          return false;
-        }
-
-        authLoginBtn.disabled = true;
-        authSignupBtn.disabled = true;
-        setAuthMessage("Signing in...", false);
-
-        try {
-          const loginBody = new URLSearchParams({
-            grant_type: "password",
-            username: email,
-            password: password,
-          });
-          const response = await fetch("/.netlify/identity/token", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: loginBody.toString(),
-          });
-          const payload = await response.json().catch(function () {
-            return {};
-          });
-
-          if (!response.ok || !payload.access_token) {
-            const message =
-              (payload && payload.error_description) ||
-              (payload && payload.msg) ||
-              (payload && payload.error === "unsupported_grant_type"
-                ? "Login request format failed. Please refresh and try again."
-                : "") ||
-              "Login failed. Verify your email and password.";
-            setAuthMessage(message, true);
-            return false;
-          }
-
-          saveDirectIdentity(payload.access_token, email);
-          authPassword.value = "";
-          setAuthMessage("Signed in.", false);
-          syncUserUI();
-          return true;
-        } catch (_err) {
-          setAuthMessage("Login failed. Please try again.", true);
-          return false;
-        } finally {
-          authLoginBtn.disabled = false;
-          authSignupBtn.disabled = false;
-        }
-      }
-
-      async function signupWithPassword() {
-        const email = (authEmail.value || "").trim().toLowerCase();
-        const password = authPassword.value || "";
-        if (!email || !password) {
-          setAuthMessage("Enter your email and password.", true);
-          return;
-        }
-
-        authLoginBtn.disabled = true;
-        authSignupBtn.disabled = true;
-        setAuthMessage("Creating account...", false);
-
-        try {
-          const response = await fetch("/.netlify/identity/signup", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: email, password: password }),
-          });
-          const payload = await response.json().catch(function () {
-            return {};
-          });
-
-          if (!response.ok) {
-            const message = (payload && payload.msg) || "Unable to create account.";
-            setAuthMessage(message, true);
-            return;
-          }
-
-          if (payload && payload.token && payload.token.access_token) {
-            saveDirectIdentity(payload.token.access_token, email);
-            authPassword.value = "";
-            setAuthMessage("Account created and signed in.", false);
-            syncUserUI();
-            return;
-          }
-
-          const loggedIn = await loginWithPassword();
-          if (loggedIn) {
-            setAuthMessage("Account created and signed in.", false);
-            return;
-          }
-
-          setAuthMessage(
-            "Account created. Please log in with your email and password.",
-            false
-          );
-        } catch (_err) {
-          setAuthMessage("Unable to create account right now.", true);
-        } finally {
-          authLoginBtn.disabled = false;
-          authSignupBtn.disabled = false;
-        }
       }
 
       async function startCheckout() {
@@ -650,41 +401,28 @@
           return;
         }
 
-        const user = currentUser();
-        const emailInput = (authEmail.value || "").trim().toLowerCase();
-        const hasEmailInput = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput);
-        if (!user && !hasEmailInput) {
-          pendingCheckoutAfterLogin = true;
-          openIdentity();
-          setAuthMessage("Enter your email to continue, or sign in.", true);
+        const emailInput = (checkoutEmail.value || "").trim().toLowerCase();
+        if (!emailPattern.test(emailInput)) {
+          setStatus("Enter a valid email to continue.");
+          setErrorVisible(true);
           return;
         }
 
         setErrorVisible(false);
         setCheckoutBusy(true);
         setStatus("Creating Stripe Checkout session...");
-        setAuthMessage("", false);
 
         try {
-          const token = user ? await getIdentityToken(user) : null;
-          const body = { trial: true, ...(user ? {} : { email: emailInput }) };
+          const body = { trial: true, email: emailInput };
           const response = await fetch("/.netlify/functions/create-checkout-session", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              ...(token ? { Authorization: "Bearer " + token } : {}),
             },
             body: JSON.stringify(body),
           });
 
           const payload = await response.json().catch(function () { return {}; });
-          if (response.status === 401) {
-            pendingCheckoutAfterLogin = true;
-            setCheckoutBusy(false);
-            openIdentity();
-            return;
-          }
-
           if (!response.ok || !payload.url) {
             throw new Error(payload && payload.error ? payload.error : "Checkout unavailable");
           }
@@ -698,98 +436,17 @@
         }
       }
 
-      async function checkAccessDebug() {
-        try {
-          const user = currentUser();
-          if (!user) {
-            debugOutput.textContent = "Not signed in.";
-            return;
-          }
-
-          const token = await getIdentityToken(user);
-          if (!token) {
-            debugOutput.textContent = "No access token yet.";
-            return;
-          }
-
-          const response = await fetch("/.netlify/functions/me", {
-            method: "GET",
-            headers: {
-              Authorization: "Bearer " + token,
-            },
-          });
-          const payload = await response.json().catch(function () { return {}; });
-          if (!response.ok) {
-            debugOutput.textContent = payload && payload.error ? payload.error : "Unable to check access.";
-            return;
-          }
-
-          debugOutput.textContent = "Status: " + (payload.status || "inactive");
-        } catch (_err) {
-          debugOutput.textContent = "Unable to check access.";
-        }
-      }
-
-      if (debugMode) {
-        debugRow.hidden = false;
-      }
-
-      authBtn.addEventListener("click", function () {
-        const user = currentUser();
-        if (user && window.netlifyIdentity && typeof window.netlifyIdentity.logout === "function") {
-          window.netlifyIdentity.logout();
-          saveDirectIdentity("", "");
-          syncUserUI();
-          return;
-        }
-        if (user && user.source === "direct") {
-          saveDirectIdentity("", "");
-          syncUserUI();
-          return;
-        }
-        openIdentity();
-      });
-
       checkoutBtn.addEventListener("click", startCheckout);
-      authLoginBtn.addEventListener("click", async function () {
-        const loggedIn = await loginWithPassword();
-        if (loggedIn && (shouldAutostart || pendingCheckoutAfterLogin)) {
-          pendingCheckoutAfterLogin = false;
+      checkoutEmail.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
           startCheckout();
         }
       });
-      authSignupBtn.addEventListener("click", signupWithPassword);
-      authPassword.addEventListener("keydown", function (event) {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          authLoginBtn.click();
-        }
-      });
-      if (checkAccessBtn) {
-        checkAccessBtn.addEventListener("click", checkAccessDebug);
-      }
 
-      syncUserUI();
-
-      if (window.netlifyIdentity) {
-        window.netlifyIdentity.on("init", syncUserUI);
-        window.netlifyIdentity.on("login", function (user) {
-          window.netlifyIdentity.close();
-          saveDirectIdentity("", "");
-          setSignedInLine(user);
-          syncUserUI();
-          if (shouldAutostart || pendingCheckoutAfterLogin) {
-            pendingCheckoutAfterLogin = false;
-            startCheckout();
-          }
-        });
-        window.netlifyIdentity.on("logout", function () {
-          saveDirectIdentity("", "");
-          setErrorVisible(false);
-          syncUserUI();
-        });
-        window.netlifyIdentity.init();
-      }
+      signedInLine.textContent = "";
+      setStatus("Enter your email, then click Continue to Checkout to start your free trial.");
+      checkoutEmail.focus();
 
       if (shouldAutostart) {
         startCheckout();
