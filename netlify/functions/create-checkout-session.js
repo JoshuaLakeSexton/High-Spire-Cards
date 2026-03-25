@@ -41,14 +41,17 @@ exports.handler = async (event) => {
     return optionsResponse();
   }
 
-  if (event.httpMethod !== "POST") {
+  const isPost = event.httpMethod === "POST";
+  const isGet = event.httpMethod === "GET";
+  if (!isPost && !isGet) {
     return methodNotAllowed();
   }
 
-  const body = parseJsonBody(event);
-  if (body === null) {
+  const body = isPost ? parseJsonBody(event) : {};
+  if (isPost && body === null) {
     return json(400, { error: "Invalid JSON body." });
   }
+  const query = event.queryStringParameters || {};
 
   let user;
   try {
@@ -58,7 +61,8 @@ exports.handler = async (event) => {
   }
 
   if (!user) {
-    const emailFromBody = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const emailCandidate = isGet ? query.email : body.email;
+    const emailFromBody = typeof emailCandidate === "string" ? emailCandidate.trim().toLowerCase() : "";
     if (!isValidEmail(emailFromBody)) {
       return json(401, {
         error: "Authentication required. Sign in or provide a valid email to continue.",
@@ -93,7 +97,10 @@ exports.handler = async (event) => {
   }
 
   const siteUrl = normalizeBaseUrl(process.env.PUBLIC_SITE_URL, "https://www.highspirelearning.com");
-  const useTrial = body.trial !== false;
+  const queryTrial =
+    typeof query.trial === "string" &&
+    (query.trial === "1" || query.trial.toLowerCase() === "true" || query.trial.toLowerCase() === "yes");
+  const useTrial = isGet ? queryTrial : body.trial !== false;
   const trialDaysRaw = Number.parseInt(process.env.STRIPE_TRIAL_DAYS || "3", 10);
   const trialDays = Number.isFinite(trialDaysRaw) && trialDaysRaw > 0 ? trialDaysRaw : 3;
 
@@ -122,6 +129,17 @@ exports.handler = async (event) => {
 
     if (!session.url) {
       return json(500, { error: "Stripe did not return a checkout URL." });
+    }
+
+    if (isGet) {
+      return {
+        statusCode: 302,
+        headers: {
+          Location: session.url,
+          "Cache-Control": "no-store",
+        },
+        body: "",
+      };
     }
 
     return json(200, { url: session.url });

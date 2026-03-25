@@ -353,7 +353,7 @@
         <p class="planMeta">3-day free trial, then billed monthly.</p>
       </section>
 
-      <p id="status" class="status" aria-live="polite"> </p>
+      <p id="status" class="status" aria-live="polite">Enter your email to continue.</p>
       <p id="checkoutError" class="error" aria-live="polite">Checkout unavailable. Please try again.</p>
 
       <section class="emailPanel" aria-label="Checkout email">
@@ -392,8 +392,26 @@
 
       function setCheckoutBusy(isBusy) {
         checkoutInFlight = isBusy;
-        checkoutBtn.disabled = isBusy;
+        if (isBusy) {
+          checkoutBtn.disabled = true;
+        } else {
+          checkoutBtn.disabled = !emailPattern.test((checkoutEmail.value || "").trim().toLowerCase());
+        }
         checkoutBtn.textContent = isBusy ? "Starting checkout..." : "Continue to Checkout";
+      }
+
+      function updateEmailState() {
+        const emailInput = (checkoutEmail.value || "").trim().toLowerCase();
+        const isValid = emailPattern.test(emailInput);
+        if (!checkoutInFlight) {
+          checkoutBtn.disabled = !isValid;
+        }
+        if (isValid) {
+          setErrorVisible(false);
+          setStatus("Ready to continue.");
+        } else {
+          setStatus("Enter your email to continue.");
+        }
       }
 
       async function startCheckout() {
@@ -430,13 +448,16 @@
           window.location.assign(payload.url);
         } catch (err) {
           console.error("Checkout error:", err);
-          setStatus("Unable to start checkout.");
-          setErrorVisible(true);
-          setCheckoutBusy(false);
+          setStatus("Checkout unavailable. Retrying...");
+          setErrorVisible(false);
+          const fallbackEmail = encodeURIComponent(emailInput);
+          const fallbackUrl = "/.netlify/functions/create-checkout-session?trial=1&email=" + fallbackEmail;
+          window.location.assign(fallbackUrl);
         }
       }
 
       checkoutBtn.addEventListener("click", startCheckout);
+      checkoutEmail.addEventListener("input", updateEmailState);
       checkoutEmail.addEventListener("keydown", function (event) {
         if (event.key === "Enter") {
           event.preventDefault();
@@ -445,7 +466,9 @@
       });
 
       signedInLine.textContent = "";
-      setStatus("");
+      checkoutBtn.disabled = true;
+      setStatus("Enter your email to continue.");
+      updateEmailState();
 
       if (shouldAutostart) {
         const prefilledEmail = (checkoutEmail.value || "").trim().toLowerCase();
