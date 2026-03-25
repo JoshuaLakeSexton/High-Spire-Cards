@@ -237,6 +237,7 @@
 
       <div class="ctaRow">
         <button id="enterAppBtn" class="btn" type="button" hidden>Enter App</button>
+        <button id="manageBillingBtn" class="btn secondary" type="button" hidden>Manage Billing</button>
       </div>
 
       <div id="debugRow" class="debugRow" hidden>
@@ -251,6 +252,7 @@
       const statusText = document.getElementById("statusText");
       const signedInLine = document.getElementById("signedInLine");
       const enterAppBtn = document.getElementById("enterAppBtn");
+      const manageBillingBtn = document.getElementById("manageBillingBtn");
       const debugRow = document.getElementById("debugRow");
       const debugOutput = document.getElementById("debugOutput");
       const checkAccessBtn = document.getElementById("checkAccessBtn");
@@ -311,16 +313,24 @@
         return payload;
       }
 
-      function setUnlockedUI() {
-        statusText.textContent = "Your trial is active. You can enter the app now.";
+      function setEnterReadyUI() {
         enterAppBtn.hidden = false;
         enterAppBtn.disabled = false;
         enterAppBtn.textContent = "Enter App";
+        manageBillingBtn.hidden = false;
+        manageBillingBtn.disabled = false;
+        manageBillingBtn.textContent = "Manage Billing";
+      }
+
+      function setUnlockedUI() {
+        statusText.textContent = "Your trial is active. You can enter the app now.";
+        setEnterReadyUI();
       }
 
       function setWaitingUI(message) {
         statusText.textContent = message || "We're confirming your subscription...";
         enterAppBtn.hidden = true;
+        manageBillingBtn.hidden = true;
       }
 
       async function pollForAccess() {
@@ -362,12 +372,14 @@
         try {
           setWaitingUI("Checking your subscription status...");
           await mintAppAccessFromSession(sessionId);
+          setEnterReadyUI();
           const payload = await fetchMe(appToken);
           if (isUnlockedStatus(payload.status)) {
             setSignedInLine(payload.email || "");
             setUnlockedUI();
             return;
           }
+          statusText.textContent = "We're confirming your subscription...";
           await pollForAccess();
         } catch (err) {
           setWaitingUI("We couldn't verify your subscription right now. Please try again.");
@@ -416,11 +428,48 @@
         }
       }
 
+      async function handleManageBilling() {
+        try {
+          if (!sessionId) {
+            statusText.textContent = "Missing checkout session. Return to trial and try again.";
+            return;
+          }
+
+          manageBillingBtn.disabled = true;
+          manageBillingBtn.textContent = "Opening...";
+
+          if (!appToken) {
+            await mintAppAccessFromSession(sessionId);
+          }
+
+          const response = await fetch("/.netlify/functions/create-portal-session", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + appToken,
+            },
+            body: "{}",
+          });
+
+          const payload = await response.json().catch(function () { return {}; });
+          if (!response.ok || !payload.url) {
+            throw new Error(payload && payload.error ? payload.error : "Unable to open billing portal.");
+          }
+
+          window.location.assign(payload.url);
+        } catch (_err) {
+          statusText.textContent = "Unable to open billing right now. Please try again.";
+          manageBillingBtn.disabled = false;
+          manageBillingBtn.textContent = "Manage Billing";
+        }
+      }
+
       if (debugMode) {
         debugRow.hidden = false;
       }
 
       enterAppBtn.addEventListener("click", handleEnterApp);
+      manageBillingBtn.addEventListener("click", handleManageBilling);
       checkAccessBtn.addEventListener("click", checkAccessDebug);
       refreshAccess();
     })();

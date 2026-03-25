@@ -449,7 +449,10 @@
       checkoutEmail.focus();
 
       if (shouldAutostart) {
-        startCheckout();
+        const prefilledEmail = (checkoutEmail.value || "").trim().toLowerCase();
+        if (emailPattern.test(prefilledEmail)) {
+          startCheckout();
+        }
       }
     })();
   </script>
