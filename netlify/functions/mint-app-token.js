@@ -18,6 +18,58 @@ function isUuid(value) {
   );
 }
 
+function normalizeStatus(status) {
+  switch (status) {
+    case "active":
+    case "trialing":
+    case "past_due":
+    case "canceled":
+    case "unpaid":
+      return status;
+    default:
+      return "inactive";
+  }
+}
+
+function toTimestamp(seconds) {
+  if (!seconds) {
+    return null;
+  }
+  return new Date(Number(seconds) * 1000);
+}
+
+async function upsertEntitlement(client, { userId, email, subscription }) {
+  await client.query(
+    `
+      INSERT INTO entitlements (
+        user_id,
+        email,
+        plan,
+        status,
+        current_period_end,
+        stripe_subscription_id,
+        updated_at
+      )
+      VALUES ($1::uuid, $2, 'pro', $3, $4, $5, now())
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        email = EXCLUDED.email,
+        plan = EXCLUDED.plan,
+        status = EXCLUDED.status,
+        current_period_end = EXCLUDED.current_period_end,
+        stripe_subscription_id = EXCLUDED.stripe_subscription_id,
+        updated_at = now()
+    `,
+    [
+      userId,
+      email,
+      normalizeStatus(subscription && subscription.status),
+      toTimestamp(subscription && subscription.current_period_end),
+      subscription && subscription.id ? String(subscription.id) : null,
+    ]
+  );
+}
+
 async function resolveUserFromCheckoutSession(sessionId) {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
@@ -63,6 +115,14 @@ async function resolveUserFromCheckoutSession(sessionId) {
   }
 
   const normalizedEmail = email.toLowerCase();
+  let subscription = null;
+  if (session.subscription) {
+    if (typeof session.subscription === "string") {
+      subscription = await stripe.subscriptions.retrieve(session.subscription);
+    } else {
+      subscription = session.subscription;
+    }
+  }
 
   return withClient(async (client) => {
     let userId = await getUserIdByStripeCustomer(client, customerId);
@@ -88,6 +148,13 @@ async function resolveUserFromCheckoutSession(sessionId) {
     }
 
     await upsertStripeCustomer(client, user.id, customerId);
+    if (subscription && subscription.id) {
+      await upsertEntitlement(client, {
+        userId: user.id,
+        email: String(user.email || normalizedEmail).toLowerCase(),
+        subscription,
+      });
+    }
 
     return {
       id: String(user.id),
