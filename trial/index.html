@@ -353,7 +353,7 @@
         <p class="planMeta">3-day free trial, then billed monthly.</p>
       </section>
 
-      <p id="status" class="status" aria-live="polite">Preparing checkout...</p>
+      <p id="status" class="status" aria-live="polite"> </p>
       <p id="checkoutError" class="error" aria-live="polite">Checkout unavailable. Please try again.</p>
 
       <section class="emailPanel" aria-label="Checkout email">
@@ -383,7 +383,7 @@
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       function setStatus(message) {
-        statusEl.textContent = message;
+        statusEl.textContent = message || " ";
       }
 
       function setErrorVisible(visible) {
@@ -445,8 +445,7 @@
       });
 
       signedInLine.textContent = "";
-      setStatus("Enter your email, then click Continue to Checkout to start your free trial.");
-      checkoutEmail.focus();
+      setStatus("");
 
       if (shouldAutostart) {
         const prefilledEmail = (checkoutEmail.value || "").trim().toLowerCase();

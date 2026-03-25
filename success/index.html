@@ -247,6 +247,7 @@
     </section>
   </main>
 
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <script>
     (function () {
       const statusText = document.getElementById("statusText");
@@ -265,6 +266,7 @@
       let pollInFlight = false;
       let appUrl = null;
       let appToken = null;
+      let identityToken = null;
 
       function isUnlockedStatus(status) {
         return status === "active" || status === "trialing";
@@ -294,6 +296,25 @@
         return payload;
       }
 
+      function currentIdentityUser() {
+        return window.netlifyIdentity && typeof window.netlifyIdentity.currentUser === "function"
+          ? window.netlifyIdentity.currentUser()
+          : null;
+      }
+
+      async function getIdentityToken() {
+        const user = currentIdentityUser();
+        if (!user || typeof user.jwt !== "function") {
+          return null;
+        }
+
+        try {
+          return await user.jwt(true);
+        } catch (_err) {
+          return null;
+        }
+      }
+
       async function mintAppAccessFromSession(checkoutSessionId) {
         const response = await fetch("/.netlify/functions/mint-app-token", {
           method: "POST",
@@ -311,6 +332,44 @@
         appUrl = payload.app_url;
         appToken = payload.token;
         return payload;
+      }
+
+      async function mintAppAccessFromIdentity() {
+        identityToken = identityToken || (await getIdentityToken());
+        if (!identityToken) {
+          throw new Error("No website session found.");
+        }
+
+        const response = await fetch("/.netlify/functions/mint-app-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + identityToken,
+          },
+          body: "{}",
+        });
+
+        const payload = await response.json().catch(function () { return {}; });
+        if (!response.ok || !payload.app_url || !payload.token) {
+          throw new Error(payload && payload.error ? payload.error : "Unable to mint app access token.");
+        }
+
+        appUrl = payload.app_url;
+        appToken = payload.token;
+        return payload;
+      }
+
+      async function ensureAppAccessToken() {
+        if (appToken && appUrl) {
+          return;
+        }
+
+        if (sessionId) {
+          await mintAppAccessFromSession(sessionId);
+          return;
+        }
+
+        await mintAppAccessFromIdentity();
       }
 
       function setEnterReadyUI() {
@@ -364,14 +423,21 @@
       }
 
       async function refreshAccess() {
-        if (!sessionId) {
-          setWaitingUI("Missing checkout session. Return to trial and try again.");
-          return;
-        }
-
         try {
           setWaitingUI("Checking your subscription status...");
-          await mintAppAccessFromSession(sessionId);
+          const mintStart = Date.now();
+          while (!appToken && Date.now() - mintStart <= POLL_TIMEOUT_MS) {
+            try {
+              await ensureAppAccessToken();
+            } catch (_err) {
+              await new Promise(function (resolve) { setTimeout(resolve, POLL_INTERVAL_MS); });
+            }
+          }
+
+          if (!appToken) {
+            throw new Error("Unable to create app token.");
+          }
+
           setEnterReadyUI();
           const payload = await fetchMe(appToken);
           if (isUnlockedStatus(payload.status)) {
@@ -404,17 +470,10 @@
 
       async function handleEnterApp() {
         try {
-          if (!sessionId) {
-            statusText.textContent = "Missing checkout session. Return to trial and try again.";
-            return;
-          }
-
           enterAppBtn.disabled = true;
           enterAppBtn.textContent = "Entering...";
 
-          if (!appUrl) {
-            await mintAppAccessFromSession(sessionId);
-          }
+          await ensureAppAccessToken();
 
           if (!appUrl) {
             throw new Error("Unable to prepare app access.");
@@ -430,17 +489,10 @@
 
       async function handleManageBilling() {
         try {
-          if (!sessionId) {
-            statusText.textContent = "Missing checkout session. Return to trial and try again.";
-            return;
-          }
-
           manageBillingBtn.disabled = true;
           manageBillingBtn.textContent = "Opening...";
 
-          if (!appToken) {
-            await mintAppAccessFromSession(sessionId);
-          }
+          await ensureAppAccessToken();
 
           const response = await fetch("/.netlify/functions/create-portal-session", {
             method: "POST",
