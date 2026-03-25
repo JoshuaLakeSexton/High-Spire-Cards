@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Billing — High Spire</title>
+  <link rel="preload" href="/assets/SortsMillGoudy-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <style>
+    @font-face { font-family: "Sorts Mill Goudy"; src: url("/assets/SortsMillGoudy-Regular.ttf") format("truetype"); }
+    body{margin:0;font-family:"Sorts Mill Goudy",serif;background:#f3f3f1;color:#111;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px}
+    .panel{width:min(640px,100%);border:1px solid rgba(0,0,0,.14);background:rgba(255,255,255,.78);padding:40px 28px;text-align:center;box-shadow:0 20px 54px rgba(0,0,0,.12)}
+    h1{margin:0 0 10px;font-size:56px;line-height:1}
+    p{margin:0 0 18px;font-size:22px;opacity:.85}
+    .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+    .btn{font:inherit;font-size:20px;padding:12px 18px;border:1px solid rgba(0,0,0,.16);background:#fff;cursor:pointer;min-width:220px}
+    .btn.primary{background:#111;color:#fff;border-color:#111}
+    .msg{margin-top:12px;min-height:1.2em;font-size:18px;opacity:.75}
+    .err{color:#8f1f1f}
+  </style>
+</head>
+<body>
+  <section class="panel">
+    <h1>Manage Billing</h1>
+    <p>Open Stripe to cancel or update your subscription.</p>
+    <div class="row">
+      <button id="signinBtn" class="btn" type="button">Sign In / Create Account</button>
+      <button id="billingBtn" class="btn primary" type="button">Open Billing Portal</button>
+    </div>
+    <div id="msg" class="msg"></div>
+  </section>
+
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script>
+    (function(){
+      const signinBtn = document.getElementById('signinBtn');
+      const billingBtn = document.getElementById('billingBtn');
+      const msg = document.getElementById('msg');
+
+      function currentUser(){
+        return window.netlifyIdentity && typeof window.netlifyIdentity.currentUser === 'function'
+          ? window.netlifyIdentity.currentUser() : null;
+      }
+
+      async function token(user){
+        if (!user || typeof user.jwt !== 'function') return null;
+        return user.jwt(true);
+      }
+
+      function setMsg(text,isErr){
+        msg.textContent = text || '';
+        msg.classList.toggle('err', Boolean(isErr));
+      }
+
+      signinBtn.addEventListener('click', function(){
+        if (!window.netlifyIdentity) { setMsg('Sign-in is unavailable right now.', true); return; }
+        window.netlifyIdentity.open('signup');
+      });
+
+      billingBtn.addEventListener('click', async function(){
+        try {
+          const user = currentUser();
+          if (!user) { setMsg('Please sign in first.', true); window.netlifyIdentity && window.netlifyIdentity.open('signup'); return; }
+          billingBtn.disabled = true;
+          billingBtn.textContent = 'Opening...';
+          const t = await token(user);
+          const res = await fetch('/.netlify/functions/create-portal-session', {
+            method:'POST',
+            headers:{'Content-Type':'application/json', ...(t?{Authorization:'Bearer '+t}:{})},
+            body:'{}'
+          });
+          const payload = await res.json().catch(()=>({}));
+          if (!res.ok || !payload.url) throw new Error(payload.error || 'Unable to open billing portal.');
+          window.location.assign(payload.url);
+        } catch (e) {
+          setMsg(e && e.message ? e.message : 'Unable to open billing portal.', true);
+          billingBtn.disabled = false;
+          billingBtn.textContent = 'Open Billing Portal';
+        }
+      });
+
+      if (window.netlifyIdentity) {
+        window.netlifyIdentity.on('login', function(){ window.netlifyIdentity.close(); setMsg('Signed in. You can open billing now.', false); });
+        window.netlifyIdentity.init();
+      }
+    })();
+  </script>
+</body>
+</html>
